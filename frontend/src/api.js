@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:8000';
+const API_URL = import.meta.env.PROD ? '' : 'http://localhost:8000';
 
 export const fetchRecords = async () => {
   const response = await fetch(`${API_URL}/records`);
@@ -31,5 +31,37 @@ export const deleteRecord = async (id) => {
     method: 'DELETE',
   });
   if (!response.ok) throw new Error('Failed to delete record');
+  return response.json();
+};
+
+export const fetchInstitutes = async () => {
+  const response = await fetch(`${API_URL}/institutes`);
+  if (!response.ok) throw new Error('Failed to fetch institutes');
+  return response.json();
+};
+
+export const updateInstitutes = async (institutes) => {
+  const response = await fetch(`${API_URL}/institutes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(institutes),
+  });
+  if (!response.ok) throw new Error('Failed to update institutes');
+  return response.json();
+};
+
+export const fetchCategories = async () => {
+  const response = await fetch(`${API_URL}/categories`);
+  if (!response.ok) throw new Error('Failed to fetch categories');
+  return response.json();
+};
+
+export const updateCategories = async (categories) => {
+  const response = await fetch(`${API_URL}/categories`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(categories),
+  });
+  if (!response.ok) throw new Error('Failed to update categories');
   return response.json();
 };

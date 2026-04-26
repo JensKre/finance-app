@@ -1,6 +1,71 @@
 # Sprint Log
 
-## Sprint 2: Visualisierung & Erweitertes Management
+## Sprint 6: Production Build & Lokales Deployment
+
+**Ziel:** Erstellung einer eigenständigen, produktionsbereiten Version der App in einem separaten Ordner.
+
+### Epic 14: App-Packaging
+- [ ] **US 14.1 - Backend für Production vorbereiten**
+  - *AC 1:* FastAPI dient als gemeinsamer Server für Backend-API und Frontend-Assets.
+  - *AC 2:* Das Backend erkennt, ob es im Production-Modus läuft und liefert die `index.html` aus.
+- [ ] **US 14.2 - Build- & Deployment-Skript**
+  - *AC 1:* Ein Skript `build_and_deploy.sh` erstellt einen neuen Ordner `finance-app-live`.
+  - *AC 2:* Der Frontend-Build wird durchgeführt und in den Live-Ordner kopiert.
+  - *AC 3:* Alle notwendigen Backend-Dateien werden in den Live-Ordner kopiert.
+  - *AC 4:* Eine `start.command` Datei im Live-Ordner ermöglicht den einfachen Start der Gesamt-App.
+
+---
+
+## Sprint 5: Optimierte Listen-Ansicht & Workflow-Abschluss (COMPLETED)
+
+**Ziel:** Verbesserung der Übersichtlichkeit in den Einstellungen durch vertikale, alphabetisch sortierte Listen.
+
+### Epic 13: UI-Optimierung (Einstellungen)
+- [ ] **US 13.1 - Vertikale Listenansicht**
+  - *AC 1:* Institute und Kategorien werden in einer einspaltigen (vertikalen) Liste untereinander dargestellt (statt im Grid).
+  - *AC 2:* Die alphabetische Sortierung bleibt erhalten.
+  - *AC 3:* Das Design bleibt modern und übersichtlich (Dark Mode).
+
+---
+
+## Sprint 4: Kategorie-Management & Globale Einstellungen (COMPLETED)
+
+**Ziel:** Flexibilisierung der Finanzkategorien durch eine verwaltbare Liste in den Einstellungen.
+
+### Epic 11: Kategorie-Verwaltung
+- [ ] **US 11.1 - Zentrale Kategorieliste (Backend)**
+  - *AC 1:* Das Backend speichert eine Liste von Kategorien in der `data.json`.
+  - *AC 2:* Es gibt API-Endpunkte zum Abrufen und Aktualisieren dieser Liste.
+- [ ] **US 11.2 - Verwaltungsoberfläche (Frontend)**
+  - *AC 1:* Der Tab "Einstellungen" wird um einen Bereich zur Verwaltung der Kategorien erweitert.
+  - *AC 2:* Änderungen an der Kategorieliste werden sofort im Backend gespeichert.
+
+### Epic 12: Dynamische Formulare II
+- [ ] **US 12.1 - Dropdown-Auswahl für Kategorien**
+  - *AC 1:* Alle Kategorie-Dropdowns in der App beziehen ihre Daten nun aus der zentralen Kategorieliste.
+
+---
+
+## Sprint 3: Institut-Management & Dynamische Listen (COMPLETED)
+
+**Ziel:** Zentralisierung der Institutsverwaltung durch eine konfigurierbare Liste und Umstellung der Erfassung auf Dropdown-Auswahl.
+
+### Epic 9: Instituts-Verwaltung
+- [ ] **US 9.1 - Zentrale Institutsliste (Backend)**
+  - *AC 1:* Das Backend speichert eine Liste von Instituten in der `data.json`.
+  - *AC 2:* Es gibt API-Endpunkte zum Abrufen und Aktualisieren dieser Liste.
+- [ ] **US 9.2 - Verwaltungsoberfläche (Frontend)**
+  - *AC 1:* Ein neuer Tab "Einstellungen" ermöglicht das Hinzufügen und Löschen von Instituten.
+  - *AC 2:* Änderungen an der Liste werden sofort im Backend gespeichert.
+
+### Epic 10: Dynamische Formulare
+- [ ] **US 10.1 - Dropdown-Auswahl für Institute**
+  - *AC 1:* Das Feld "Institut / Bank" im Erfassungsformular ist nun ein Dropdown-Menü.
+  - *AC 2:* Das Dropdown wird dynamisch aus der zentralen Institutsliste gespeist.
+
+---
+
+## Sprint 2: Visualisierung & Erweitertes Management (COMPLETED)
 
 **Ziel:** Verbesserung der Datenvisualisierung durch Diagramme und Erweiterung der Verwaltungsfunktionen (Institute/Export).
 

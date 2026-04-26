@@ -1,0 +1,111 @@
+{
+    "records": [
+        {
+            "person": "Jens",
+            "institution": "Trade Republic",
+            "category": "Tagesgeld",
+            "amount": 7586.3,
+            "entry_date": "2026-04-26",
+            "id": "89310e90-ed85-40e3-b630-62001ed01f40"
+        },
+        {
+            "person": "Jens",
+            "institution": "Trade Republic",
+            "category": "ETF",
+            "amount": 144974.1,
+            "entry_date": "2026-04-26",
+            "id": "e2dfd33a-2325-42ae-87c5-bdfe1b140b65"
+        },
+        {
+            "person": "Jens",
+            "institution": "Scalable Capital",
+            "category": "ETF",
+            "amount": 850.34,
+            "entry_date": "2026-04-26",
+            "id": "55e051b0-6292-4477-9ca0-7a161bf2511b"
+        },
+        {
+            "person": "Jens",
+            "institution": "Scalable Capital",
+            "category": "Tagesgeld",
+            "amount": 7863.45,
+            "entry_date": "2026-04-26",
+            "id": "b94a02d8-bb08-4047-b6bd-7952516220e5"
+        },
+        {
+            "person": "Jens",
+            "institution": "Bitpanda",
+            "category": "Krypto",
+            "amount": 48000.16,
+            "entry_date": "2026-04-26",
+            "id": "c144b963-8753-4e2e-bea9-44c389baf4e8"
+        },
+        {
+            "person": "Jens",
+            "institution": "Trust",
+            "category": "Krypto",
+            "amount": 612.04,
+            "entry_date": "2026-04-26",
+            "id": "61812360-5b5f-4126-baf9-8d8cf27e2d38"
+        },
+        {
+            "person": "Jens",
+            "institution": "Binance",
+            "category": "Krypto",
+            "amount": 637.06,
+            "entry_date": "2026-04-26",
+            "id": "ad536e9b-81b7-4919-a74b-337923c42029"
+        },
+        {
+            "person": "Jens",
+            "institution": "Coinbase",
+            "category": "Krypto",
+            "amount": 106.53,
+            "entry_date": "2026-04-26",
+            "id": "659bb450-2cdc-49bc-8038-87a5742b8d13"
+        },
+        {
+            "person": "Jens",
+            "institution": "Tresor",
+            "category": "Gold",
+            "amount": 31328.0,
+            "entry_date": "2026-04-26",
+            "id": "9f103fc8-d686-4431-8d8a-22f3a56f21ad"
+        },
+        {
+            "person": "Jens",
+            "institution": "Tresor",
+            "category": "Silber",
+            "amount": 1190.0,
+            "entry_date": "2026-04-26",
+            "id": "e4504269-e7fb-4a14-9212-63ae0bc52658"
+        },
+        {
+            "person": "Jens",
+            "institution": "Stihl",
+            "category": "Genussrechte",
+            "amount": 9450.0,
+            "entry_date": "2026-04-26",
+            "id": "38ada489-bc69-4dfd-9406-75ac7406fb38"
+        }
+    ],
+    "institutes": [
+        "Trade Republic",
+        "Binance",
+        "Scalable Capital",
+        "Coinbase",
+        "Trust",
+        "Tresor",
+        "Bitpanda",
+        "Stihl"
+    ],
+    "categories": [
+        "Girokonto",
+        "Tagesgeld",
+        "ETF",
+        "Gold",
+        "Krypto",
+        "Genussrechte",
+        "Silber"
+    ]
+}
