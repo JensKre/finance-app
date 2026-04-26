@@ -87,6 +87,62 @@
             "amount": 9450.0,
             "entry_date": "2026-04-26",
             "id": "38ada489-bc69-4dfd-9406-75ac7406fb38"
+        },
+        {
+            "person": "Annika",
+            "institution": "Trade Republic",
+            "category": "ETF",
+            "amount": 247085.0,
+            "entry_date": "2026-04-26",
+            "id": "ef8018c6-f701-4572-b0da-d6726547f91f"
+        },
+        {
+            "person": "Annika",
+            "institution": "Trade Republic",
+            "category": "Tagesgeld",
+            "amount": 43183.0,
+            "entry_date": "2026-04-26",
+            "id": "1cad965e-c60e-4445-bcc0-629c1933b4f3"
+        },
+        {
+            "person": "Annika",
+            "institution": "Coinbase",
+            "category": "Krypto",
+            "amount": 40874.0,
+            "entry_date": "2026-04-26",
+            "id": "4b0ccce7-df33-4e08-9de6-ad67a64ef96c"
+        },
+        {
+            "person": "Annika",
+            "institution": "Bitpanda",
+            "category": "Krypto",
+            "amount": 867.0,
+            "entry_date": "2026-04-26",
+            "id": "e4c7b3e0-8d69-4a53-9003-68ee2066d92c"
+        },
+        {
+            "person": "Annika",
+            "institution": "ING-Diba",
+            "category": "Girokonto",
+            "amount": 1278.0,
+            "entry_date": "2026-04-26",
+            "id": "2beab4a9-ec10-4724-aa72-85de1c5104f1"
+        },
+        {
+            "person": "Annika",
+            "institution": "DKB",
+            "category": "Tagesgeld",
+            "amount": 700.0,
+            "entry_date": "2026-04-26",
+            "id": "34224059-0907-4f4e-8a7d-b699065e309f"
+        },
+        {
+            "person": "Annika",
+            "institution": "Tresor",
+            "category": "Bargeld",
+            "amount": 2500.0,
+            "entry_date": "2026-04-26",
+            "id": "e2faeb6b-900b-4f4d-845d-a77cdb788b14"
         }
     ],
     "institutes": [
@@ -97,7 +153,9 @@
         "Trust",
         "Tresor",
         "Bitpanda",
-        "Stihl"
+        "Stihl",
+        "ING-Diba",
+        "DKB"
     ],
     "categories": [
         "Girokonto",
@@ -106,6 +164,7 @@
         "Gold",
         "Krypto",
         "Genussrechte",
-        "Silber"
+        "Silber",
+        "Bargeld"
     ]
 }

@@ -231,6 +231,39 @@ header {
   font-size: 0.875rem;
 }
 
+.finance-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.2s;
+}
+
+.finance-table th.sortable:hover {
+  color: var(--text);
+}
+
+.sort-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sort-priority {
+  background: var(--primary);
+  color: white;
+  font-size: 0.6rem;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: 700;
+}
+
+.sort-icon-muted {
+  opacity: 0.3;
+}
+
 .finance-table td {
   padding: 1rem;
   border-bottom: 1px solid var(--border);
@@ -238,6 +271,7 @@ header {
 
 .text-right { text-align: right; }
 .bold { font-weight: 700; }
+.text-danger { color: #ef4444 !important; }
 
 .badge {
   background: var(--primary-light);

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import useStore from './store';
 import { 
   Plus, Trash2, Edit2, TrendingUp, Wallet, PieChart as PieChartIcon, 
-  Download, Upload, X, CheckCircle, AlertCircle, Settings as SettingsIcon 
+  Download, Upload, X, CheckCircle, AlertCircle, Settings as SettingsIcon,
+  ChevronUp, ChevronDown, ArrowUpDown
 } from 'lucide-react';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, 
@@ -43,6 +44,8 @@ function App() {
     monthlySavings: 4000,
     yearlyGrowth: 5
   });
+
+  const [sortConfig, setSortConfig] = useState([{ key: 'entry_date', direction: 'desc' }]);
 
   useEffect(() => {
     loadInitialData();
@@ -145,7 +148,7 @@ function App() {
   const calculateTotal = (person) => {
     const latestByInstitute = {};
     records.filter(r => !person || r.person === person).forEach(r => {
-      const key = `${r.institution}-${r.category}`;
+      const key = `${r.person}-${r.institution}-${r.category}`;
       if (!latestByInstitute[key] || new Date(r.entry_date) > new Date(latestByInstitute[key].entry_date)) {
         latestByInstitute[key] = r;
       }
@@ -157,7 +160,7 @@ function App() {
     const totals = {};
     const latestByInstitute = {};
     records.forEach(r => {
-      const key = `${r.institution}-${r.category}`;
+      const key = `${r.person}-${r.institution}-${r.category}`;
       if (!latestByInstitute[key] || new Date(r.entry_date) > new Date(latestByInstitute[key].entry_date)) {
         latestByInstitute[key] = r;
       }
@@ -165,13 +168,23 @@ function App() {
     Object.values(latestByInstitute).forEach(r => {
       totals[r.category] = (totals[r.category] || 0) + r.amount;
     });
-    return Object.entries(totals).map(([name, value]) => ({ name, value }));
+    // Filter out categories with 0 or negative total for the pie chart
+    return Object.entries(totals)
+      .filter(([_, value]) => value > 0)
+      .map(([name, value]) => ({ name, value }));
   }, [records]);
 
   const historyData = useMemo(() => {
     const sortedDates = [...new Set(records.map(r => r.entry_date))].sort();
     return sortedDates.map(date => {
-      const dayTotal = records.filter(r => r.entry_date === date).reduce((sum, r) => sum + r.amount, 0);
+      const latestByInstitute = {};
+      records.filter(r => new Date(r.entry_date) <= new Date(date)).forEach(r => {
+        const key = `${r.person}-${r.institution}-${r.category}`;
+        if (!latestByInstitute[key] || new Date(r.entry_date) > new Date(latestByInstitute[key].entry_date)) {
+          latestByInstitute[key] = r;
+        }
+      });
+      const dayTotal = Object.values(latestByInstitute).reduce((sum, r) => sum + r.amount, 0);
       return { date, amount: dayTotal };
     });
   }, [records]);
@@ -190,7 +203,7 @@ function App() {
         ageJ: year - 1982,
         ageA: year - 1984
       });
-      runningTotal = (runningTotal + forecastParams.monthlySavings * 12) * (1 + forecastParams.yearlyGrowth / 100);
+      runningTotal = (runningTotal + forecastParams.monthlySavings * 12) * (1 + (parseFloat(String(forecastParams.yearlyGrowth).replace(',', '.')) || 0) / 100);
     }
     return data;
   };
@@ -198,8 +211,57 @@ function App() {
   const forecastData = generateForecast();
 
   const renderPersonTab = (person) => {
+    const handleSort = (key) => {
+      setSortConfig(prev => {
+        const existing = prev.find(s => s.key === key);
+        const others = prev.filter(s => s.key !== key);
+        
+        if (existing) {
+          // If already primary, toggle direction
+          if (prev[0].key === key) {
+            return [{ key, direction: existing.direction === 'asc' ? 'desc' : 'asc' }, ...others];
+          }
+          // Move to primary
+          return [existing, ...others];
+        }
+        // Add new as primary
+        return [{ key, direction: 'asc' }, ...prev];
+      });
+    };
+
+    const getSortIcon = (key) => {
+      const index = sortConfig.findIndex(s => s.key === key);
+      if (index === -1) return <ArrowUpDown size={14} className="sort-icon-muted" />;
+      const icon = sortConfig[index].direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />;
+      return (
+        <span className="sort-indicator">
+          {icon}
+          {sortConfig.length > 1 && index < 3 && <span className="sort-priority">{index + 1}</span>}
+        </span>
+      );
+    };
+
     const personRecords = records.filter(r => r.person === person)
-      .sort((a, b) => new Date(b.entry_date) - new Date(a.entry_date));
+      .sort((a, b) => {
+        for (const { key, direction } of sortConfig) {
+          let comparison = 0;
+          if (key === 'entry_date') {
+            comparison = new Date(a.entry_date) - new Date(b.entry_date);
+          } else if (key === 'amount') {
+            comparison = a.amount - b.amount;
+          } else {
+            const valA = a[key]?.toLowerCase() || '';
+            const valB = b[key]?.toLowerCase() || '';
+            if (valA < valB) comparison = -1;
+            else if (valA > valB) comparison = 1;
+          }
+          
+          if (comparison !== 0) {
+            return direction === 'asc' ? comparison : -comparison;
+          }
+        }
+        return 0;
+      });
 
     return (
       <div className="tab-content">
@@ -265,10 +327,18 @@ function App() {
               <table className="finance-table">
                 <thead>
                   <tr>
-                    <th>Datum</th>
-                    <th>Institut</th>
-                    <th>Kategorie</th>
-                    <th className="text-right">Betrag</th>
+                    <th onClick={() => handleSort('entry_date')} className="sortable">
+                      Datum {getSortIcon('entry_date')}
+                    </th>
+                    <th onClick={() => handleSort('institution')} className="sortable">
+                      Institut {getSortIcon('institution')}
+                    </th>
+                    <th onClick={() => handleSort('category')} className="sortable">
+                      Kategorie {getSortIcon('category')}
+                    </th>
+                    <th onClick={() => handleSort('amount')} className="text-right sortable">
+                      Betrag {getSortIcon('amount')}
+                    </th>
                     <th>Aktionen</th>
                   </tr>
                 </thead>
@@ -278,7 +348,9 @@ function App() {
                       <td>{r.entry_date}</td>
                       <td>{r.institution}</td>
                       <td><span className="badge">{r.category}</span></td>
-                      <td className="text-right bold">{r.amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</td>
+                      <td className={`text-right bold ${r.amount < 0 ? 'text-danger' : ''}`}>
+                        {r.amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                      </td>
                       <td className="actions">
                         <button className="btn-icon" onClick={() => setEditingRecord(r)} title="Bearbeiten"><Edit2 size={16} /></button>
                         <button 
@@ -437,7 +509,11 @@ function App() {
                         outerRadius={80}
                         paddingAngle={5}
                         dataKey="value"
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        label={({ name, percent }) => {
+                          const p = percent * 100;
+                          const formattedPercent = p < 1 ? p.toFixed(1).replace('.', ',') : p.toFixed(0);
+                          return `${name} ${formattedPercent}%`;
+                        }}
                       >
                         {distributionData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -529,9 +605,13 @@ function App() {
                 <div className="form-group">
                   <label>Wachstum (% p.a.)</label>
                   <input 
-                    type="number" 
+                    type="text" 
                     value={forecastParams.yearlyGrowth}
-                    onChange={(e) => setForecastParams({...forecastParams, yearlyGrowth: parseFloat(e.target.value) || 0})}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9,.]/g, '');
+                      setForecastParams({...forecastParams, yearlyGrowth: val});
+                    }}
+                    placeholder="0,0"
                   />
                 </div>
               </div>

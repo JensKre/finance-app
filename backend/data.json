@@ -79,6 +79,46 @@
             "amount": 1190.0,
             "entry_date": "2026-04-26",
             "id": "e4504269-e7fb-4a14-9212-63ae0bc52658"
+        },
+        {
+            "person": "Annika",
+            "institution": "Binance",
+            "category": "ETF",
+            "amount": 100000.0,
+            "entry_date": "2026-04-26",
+            "id": "18da8b46-67f2-4085-b0f1-9483cdf39c4f"
+        },
+        {
+            "person": "Annika",
+            "institution": "ING-Diba",
+            "category": "Tagesgeld",
+            "amount": 100000.0,
+            "entry_date": "2026-04-26",
+            "id": "2b2fdd00-d1f3-43f9-ac56-5abf667756a9"
+        },
+        {
+            "person": "Annika",
+            "institution": "Coinbase",
+            "category": "Krypto",
+            "amount": 100000.0,
+            "entry_date": "2026-04-26",
+            "id": "c3de0781-48d5-4793-a721-e06aca89fcd8"
+        },
+        {
+            "person": "Annika",
+            "institution": "Trade Republic",
+            "category": "Tagesgeld",
+            "amount": -50000.0,
+            "entry_date": "2026-04-26",
+            "id": "c7e73467-a55e-4917-a20a-60556748f026"
+        },
+        {
+            "person": "Annika",
+            "institution": "ING-Diba",
+            "category": "Girokonto",
+            "amount": 1500.0,
+            "entry_date": "2026-04-26",
+            "id": "7bad419d-5106-4f11-8146-75853903e7be"
         }
     ],
     "institutes": [
@@ -89,7 +129,8 @@
         "Trust",
         "Tresor",
         "Bitpanda",
-        "Stihl"
+        "Stihl",
+        "ING-Diba"
     ],
     "categories": [
         "Girokonto",
