@@ -3,6 +3,7 @@ import * as api from './api';
 
 const useStore = create((set, get) => ({
   records: [],
+  budgetRecords: [],
   institutes: [],
   categories: [],
   isLoading: false,
@@ -11,12 +12,13 @@ const useStore = create((set, get) => ({
   loadInitialData: async () => {
     set({ isLoading: true });
     try {
-      const [records, institutes, categories] = await Promise.all([
+      const [records, budgetRecords, institutes, categories] = await Promise.all([
         api.fetchRecords(),
+        api.fetchBudgetRecords(),
         api.fetchInstitutes(),
         api.fetchCategories()
       ]);
-      set({ records, institutes, categories, isLoading: false });
+      set({ records, budgetRecords, institutes, categories, isLoading: false });
     } catch (error) {
       set({ error: error.message, isLoading: false });
     }
@@ -74,6 +76,26 @@ const useStore = create((set, get) => ({
     try {
       const updatedList = await api.updateCategories(categories);
       set({ categories: updatedList });
+    } catch (error) {
+      set({ error: error.message });
+    }
+  },
+
+  importBudget: async (records) => {
+    try {
+      const newRecords = await api.createBudgetRecords(records);
+      set((state) => ({ budgetRecords: [...state.budgetRecords, ...newRecords] }));
+      return true;
+    } catch (error) {
+      set({ error: error.message });
+      return false;
+    }
+  },
+
+  clearBudget: async () => {
+    try {
+      await api.clearBudget();
+      set({ budgetRecords: [] });
     } catch (error) {
       set({ error: error.message });
     }

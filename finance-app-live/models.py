@@ -20,3 +20,20 @@ class FinanceRecordCreate(BaseModel):
 class ForecastParameters(BaseModel):
     monthly_savings: float
     yearly_growth_percentage: float
+
+class BudgetRecord(BaseModel):
+    id: Optional[str] = None
+    date: str
+    type: str  # "Ausgabe" or "Einnahme"
+    amount: float
+    category: str
+    person: str
+    description: str
+
+class BudgetRecordCreate(BaseModel):
+    date: str
+    type: str
+    amount: float
+    category: str
+    person: str
+    description: str

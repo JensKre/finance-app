@@ -65,3 +65,27 @@ export const updateCategories = async (categories) => {
   if (!response.ok) throw new Error('Failed to update categories');
   return response.json();
 };
+
+export const fetchBudgetRecords = async () => {
+  const response = await fetch(`${API_URL}/budget`);
+  if (!response.ok) throw new Error('Failed to fetch budget records');
+  return response.json();
+};
+
+export const createBudgetRecords = async (records) => {
+  const response = await fetch(`${API_URL}/budget`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(records),
+  });
+  if (!response.ok) throw new Error('Failed to create budget records');
+  return response.json();
+};
+
+export const clearBudget = async () => {
+  const response = await fetch(`${API_URL}/budget`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to clear budget');
+  return response.json();
+};
