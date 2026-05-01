@@ -17,20 +17,24 @@ cd "$PROJECT_DIR/frontend"
 npm install
 npm run build
 
-# 2. Live-Ordner vorbereiten (data.json NIEMALS löschen!)
-echo "📂 Bereite Live-Ordner vor..."
+# 2. Live-Ordner prüfen (Sicherstellen, dass er existiert)
+echo "📂 Prüfe Live-Ordner..."
+
+if [ ! -d "$LIVE_DIR" ]; then
+    echo "❌ FEHLER: Der Ordner '$LIVE_DIR' wurde nicht gefunden!"
+    echo "Um sicherzustellen, dass es nur eine Live-Instanz gibt, bricht der Prozess ab."
+    echo "Bitte verschiebe den Ordner zurück oder erstelle ihn manuell, falls dies beabsichtigt ist."
+    exit 1
+fi
+
+echo "🗂️  Live-Ordner gefunden. Bereite Update vor..."
 
 # Nur die App-Dateien löschen, NICHT die data.json
-if [ -d "$LIVE_DIR" ]; then
-    rm -f "$LIVE_DIR/main.py"
-    rm -f "$LIVE_DIR/models.py"
-    rm -f "$LIVE_DIR/requirements.txt"
-    rm -f "$LIVE_DIR/start_app.command"
-    rm -rf "$LIVE_DIR/static"
-    echo "🗂️  Alte App-Dateien entfernt. Live-Datenbank bleibt erhalten."
-else
-    echo "📁 Erstelle neuen Live-Ordner."
-fi
+rm -f "$LIVE_DIR/main.py"
+rm -f "$LIVE_DIR/models.py"
+rm -f "$LIVE_DIR/requirements.txt"
+rm -f "$LIVE_DIR/start_app.command"
+rm -rf "$LIVE_DIR/static"
 
 mkdir -p "$LIVE_DIR/static"
 
