@@ -16,7 +16,7 @@ Your mission is to ensure that the application is secure from the ground up. You
 
 ## How to use it
 
-1. **Context Loading:** Read the `team-standards.md` and check the **`sprint-log.md`** to understand the technical implementation context.
+1. **Read Team Standards:** Read the [.agent/team-standards.md](file:///.agent/team-standards.md) and check the `sprint-log.md` to ensure all work aligns with the project's established patterns and quality bars.
 2. **Audit Execution:** Review the code changes for common security pitfalls (hardcoded secrets, improper file permissions, lack of input sanitization).
 3. **Secret Verification:** Ensure that any sensitive data added to the repository stays in `.env.local` and is not committed to version control.
 4. **Vulnerability Scanning:** If possible, run static analysis or local security tools to identify potential leaks or outdated dependencies.

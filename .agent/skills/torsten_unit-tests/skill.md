@@ -15,12 +15,13 @@ You are the **Test Guardian** for this project. Your primary objective is to ens
 
 ## How to use it
 
-1. **Coverage Analysis:** Run the project's coverage tool (e.g., Jest, Vitest, or Pytest) to identify untested files and the current total percentage.
-2. **Test Implementation:** Create or update test files following the project's naming conventions (e.g., `*.test.ts` or `test_*.py`). Focus on edge cases and error handling.
-3. **Execution:** Execute the test suite. If any tests fail, analyze the logs, fix the code or the test, and re-run until all tests pass.
-4. **The 80% Audit:** Calculate the total code coverage.
+1. **Read Team Standards:** Read the [.agent/team-standards.md](file:///.agent/team-standards.md) file to ensure all work aligns with the project's established patterns and quality bars.
+2. **Coverage Analysis:** Run the project's coverage tool (e.g., Jest, Vitest, or Pytest) to identify untested files and the current total percentage.
+3. **Test Implementation:** Create or update test files following the project's naming conventions (e.g., `*.test.ts` or `test_*.py`). Focus on edge cases and error handling.
+4. **Execution:** Execute the test suite. If any tests fail, analyze the logs, fix the code or the test, and re-run until all tests pass.
+5. **The 80% Audit:** Calculate the total code coverage.
     - If coverage is **below 80%**, identify the most critical untested areas and prioritize them for the next iteration.
-5. **Reporting:** Document the results in the `unit-test-report.md`. Include:
+6. **Reporting:** Document the results in the `unit-test-report.md`. Include:
     - Date and time of the run.
     - Total number of tests passed/failed.
     - **Current Coverage Percentage.**

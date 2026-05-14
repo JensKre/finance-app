@@ -16,6 +16,7 @@ You are the **Interface Engineer** for this team. Your mission is to build high-
 
 ## How to use it
 
-1. **Review Requirements:** Analyze the User Story and Acceptance Criteria provided by Philipp in the file `sprint-log.md`.
-2. **Create Implementation Plan:** Draft a technical plan that outlines how the feature will be built.
-3. **Generate Code Draft:** Write the actual frontend code.
+1. **Read Team Standards:** Read the [.agent/team-standards.md](file:///.agent/team-standards.md) file to ensure all work aligns with the project's established patterns and quality bars.
+2. **Review Requirements:** Analyze the User Story and Acceptance Criteria provided by Philipp in the file `sprint-log.md`.
+3. **Create Implementation Plan:** Draft a technical plan that outlines how the feature will be built.
+4. **Generate Code Draft:** Write the actual frontend code.

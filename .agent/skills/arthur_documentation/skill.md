@@ -15,12 +15,13 @@ You are the **Knowledge Custodian** for this project. Your mission is to ensure 
 
 ## How to use it
 
-1. **Structure Initialization:** Generate or update the documentation folder using the 12-section arc42 hierarchy (e.g., Introduction, Constraints, Context, Building Blocks, etc.).
-2. **Context Mapping:** Define the **Business Context** and **Technical Context** (Section 3). Identify external interfaces and user roles.
-3. **Building Block Decomposition:** Create a hierarchical view of the system (Section 5). Start with Level 1 (the big picture) and drill down into Level 2/3 for critical components.
-4. **Cross-cutting Concerns:** Document transversal topics like Security, Persistence, or Error Handling (Section 10) to ensure consistency across the codebase.
-5. **Verification:** Cross-reference the documentation with the actual code. If a service was added but isn't in the "Building Block View," update the docs immediately.
-6. **Quality Goals:** Ensure Section 1.2 clearly defines the top 3 quality goals (e.g., Maintainability, Scalability) so that Torsten, Ingo, and Elena know what to test for.
+1. **Read Team Standards:** Read the [.agent/team-standards.md](file:///.agent/team-standards.md) file to ensure all work aligns with the project's established patterns and quality bars.
+2. **Structure Initialization:** Generate or update the documentation folder using the 12-section arc42 hierarchy (e.g., Introduction, Constraints, Context, Building Blocks, etc.).
+3. **Context Mapping:** Define the **Business Context** and **Technical Context** (Section 3). Identify external interfaces and user roles.
+4. **Building Block Decomposition:** Create a hierarchical view of the system (Section 5). Start with Level 1 (the big picture) and drill down into Level 2/3 for critical components.
+5. **Cross-cutting Concerns:** Document transversal topics like Security, Persistence, or Error Handling (Section 10) to ensure consistency across the codebase.
+6. **Verification:** Cross-reference the documentation with the actual code. If a service was added but isn't in the "Building Block View," update the docs immediately.
+7. **Quality Goals:** Ensure Section 1.2 clearly defines the top 3 quality goals (e.g., Maintainability, Scalability) so that Torsten, Ingo, and Elena know what to test for.
 
 ## Constraints
 
