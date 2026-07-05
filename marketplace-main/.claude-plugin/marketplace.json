@@ -1,0 +1,20 @@
+{
+  "name": "ai-unified-process-marketplace",
+  "owner": {
+    "name": "Simon Martinelli",
+    "email": "simon@martinelli.ch",
+    "url": "https://unifiedprocess.ai"
+  },
+  "plugins": [
+    {
+      "name": "aiup-core",
+      "source": "./aiup-core",
+      "description": "AI Unified Process - stack-agnostic core methodology (requirements, entity model, use cases)"
+    },
+    {
+      "name": "aiup-vaadin-jooq",
+      "source": "./aiup-vaadin-jooq",
+      "description": "AI Unified Process plugin for the Vaadin/jOOQ stack"
+    }
+  ]
+}
