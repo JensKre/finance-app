@@ -3,3 +3,6 @@ Numbers_Dateien/
 .jdk/
 .maven/
 target/
+finance-app-prod/
+*.db
+*.db.3

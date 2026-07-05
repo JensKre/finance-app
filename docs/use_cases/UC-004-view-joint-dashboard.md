@@ -21,7 +21,9 @@
    - A summary card with combined total wealth.
    - An interactive chart showing assets distribution by category.
    - A trend line showing wealth development over time.
-5. User can toggle between individual views (Jens only, Annika only) or combined view.
+   - A list of recent transactions.
+5. User can scroll through the recent transactions list and dashboard content.
+6. User can toggle between individual views (Jens only, Annika only) or combined view.
 
 ## Alternative Flows
 

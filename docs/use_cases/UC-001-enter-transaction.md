@@ -33,16 +33,35 @@
 1. System displays an error message indicating which fields are invalid.
 2. Use case continues at step 3.
 
+### A2: Delete Transaction
+
+**Trigger:** User clicks the delete action on an existing transaction entry (step 2)
+**Flow:**
+
+1. System displays a confirmation dialog asking the user to confirm the deletion.
+2. User confirms the deletion.
+3. System deletes the transaction entry.
+4. System updates the transactions list, updates the dashboard totals, and displays a success notification.
+5. Use case ends.
+
+### A3: Cancel Deletion
+
+**Trigger:** User cancels the deletion in the confirmation dialog (step 1 of A2)
+**Flow:**
+
+1. System closes the confirmation dialog without deleting the entry.
+2. Use case continues at step 2.
+
 ## Postconditions
 
 ### Success Postconditions
 
-- The transaction is persistently saved.
+- The transaction is persistently saved (if added) or permanently removed (if deleted).
 - The user's transaction table is updated.
 
 ### Failure Postconditions
 
-- No transaction is saved.
+- No transaction is saved or deleted.
 - An error message is displayed.
 
 ## Business Rules

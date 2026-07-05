@@ -45,6 +45,10 @@ public class MainView extends VerticalLayout {
     private final Div dashboardContainer = new Div();
     private final Grid<DataService.TransactionDto> jensGrid = new Grid<>();
     private final Grid<DataService.TransactionDto> annikaGrid = new Grid<>();
+    private final ComboBox<String> jensInstCombo = new ComboBox<>("Institut");
+    private final ComboBox<String> jensCatCombo = new ComboBox<>("Kategorie");
+    private final ComboBox<String> annikaInstCombo = new ComboBox<>("Institut");
+    private final ComboBox<String> annikaCatCombo = new ComboBox<>("Kategorie");
 
     @Autowired
     public MainView(DataService service) {
@@ -75,12 +79,13 @@ public class MainView extends VerticalLayout {
 
         // Create component contents
         tabComponentMap.put(dashboardTab, createDashboardContent());
-        tabComponentMap.put(jensTab, createUserTabContent("Jens", jensGrid));
-        tabComponentMap.put(annikaTab, createUserTabContent("Annika", annikaGrid));
+        tabComponentMap.put(jensTab, createUserTabContent("Jens", jensGrid, jensInstCombo, jensCatCombo));
+        tabComponentMap.put(annikaTab, createUserTabContent("Annika", annikaGrid, annikaInstCombo, annikaCatCombo));
         tabComponentMap.put(forecastTab, createForecastContent());
         tabComponentMap.put(settingsTab, createSettingsContent());
 
         contentContainer.setSizeFull();
+        contentContainer.getStyle().set("overflow", "auto");
         add(contentContainer);
 
         tabs.addSelectedChangeListener(event -> {
@@ -102,6 +107,14 @@ public class MainView extends VerticalLayout {
         // Refresh grids
         jensGrid.setItems(service.getTransactions("Jens"));
         annikaGrid.setItems(service.getTransactions("Annika"));
+
+        // Refresh combo box items
+        List<String> institutes = service.getInstitutes().stream().map(DataService.InstituteDto::name).collect(Collectors.toList());
+        List<String> categories = service.getCategories().stream().map(DataService.CategoryDto::name).collect(Collectors.toList());
+        jensInstCombo.setItems(institutes);
+        jensCatCombo.setItems(categories);
+        annikaInstCombo.setItems(institutes);
+        annikaCatCombo.setItems(categories);
 
         // Refresh dashboard numbers
         dashboardContainer.removeAll();
@@ -163,13 +176,14 @@ public class MainView extends VerticalLayout {
     }
 
     private Component createDashboardContent() {
-        dashboardContainer.setSizeFull();
+        dashboardContainer.setWidth("100%");
         dashboardContainer.getStyle().set("display", "flex").set("flex-direction", "column").set("align-items", "center");
         return dashboardContainer;
     }
 
-    private Component createUserTabContent(String username, Grid<DataService.TransactionDto> grid) {
+    private Component createUserTabContent(String username, Grid<DataService.TransactionDto> grid, ComboBox<String> instCombo, ComboBox<String> catCombo) {
         VerticalLayout layout = new VerticalLayout();
+        layout.setWidth("100%");
         layout.setAlignItems(Alignment.CENTER);
         layout.setSpacing(true);
 
@@ -184,12 +198,6 @@ public class MainView extends VerticalLayout {
 
         BigDecimalField amountField = new BigDecimalField("Betrag (€)");
         amountField.setPlaceholder("z.B. 1500.00");
-
-        ComboBox<String> instCombo = new ComboBox<>("Institut");
-        instCombo.setItems(service.getInstitutes().stream().map(DataService.InstituteDto::name).collect(Collectors.toList()));
-
-        ComboBox<String> catCombo = new ComboBox<>("Kategorie");
-        catCombo.setItems(service.getCategories().stream().map(DataService.CategoryDto::name).collect(Collectors.toList()));
 
         DatePicker datePicker = new DatePicker("Datum");
         datePicker.setValue(LocalDate.now());
@@ -220,22 +228,31 @@ public class MainView extends VerticalLayout {
 
         grid.addComponentColumn(item -> {
             Button deleteBtn = new Button("Löschen", e -> {
-                service.deleteTransaction(item.id());
-                refreshData();
-                Notification.show("Eintrag gelöscht.", 2000, Notification.Position.TOP_CENTER);
+                Dialog confirmDialog = new Dialog();
+                confirmDialog.setHeaderTitle("Eintrag löschen?");
+                confirmDialog.add(new Paragraph("Möchtest du diesen Eintrag wirklich unwiderruflich löschen?"));
+
+                Button confirmBtn = new Button("Ja, löschen", event -> {
+                    service.deleteTransaction(item.id());
+                    refreshData();
+                    confirmDialog.close();
+                    Notification.show("Eintrag gelöscht.", 2000, Notification.Position.TOP_CENTER);
+                });
+                confirmBtn.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_PRIMARY);
+
+                Button cancelBtn = new Button("Abbrechen", event -> confirmDialog.close());
+
+                confirmDialog.getFooter().add(cancelBtn, confirmBtn);
+                confirmDialog.open();
             });
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_SMALL);
             return deleteBtn;
         }).setHeader("Aktion");
 
-        grid.setSizeFull();
+        grid.setWidth("100%");
+        grid.setMaxWidth("800px");
+        grid.setAllRowsVisible(true);
         layout.add(grid);
-
-        // Pre-fill combos on click
-        layout.getElement().addEventListener("click", e -> {
-            instCombo.setItems(service.getInstitutes().stream().map(DataService.InstituteDto::name).collect(Collectors.toList()));
-            catCombo.setItems(service.getCategories().stream().map(DataService.CategoryDto::name).collect(Collectors.toList()));
-        });
 
         return layout;
     }
