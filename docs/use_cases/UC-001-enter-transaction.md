@@ -68,3 +68,7 @@
 
 ### BR-001: Amount Format
 The transaction amount must be a positive number with up to 2 decimal places.
+
+### BR-002: Currency and Number Formatting
+All displayed monetary values must include thousands separators and a currency symbol, formatted according to the German locale (e.g., dot as thousands separator, comma as decimal separator: "123.456,78 €").
+

@@ -65,6 +65,22 @@ public class DataService {
                 .execute();
     }
 
+    public boolean instituteExists(String name) {
+        return create.fetchExists(
+                create.selectOne()
+                        .from(INSTITUTE)
+                        .where(INST_NAME.equalIgnoreCase(name))
+        );
+    }
+
+    public boolean isInstituteInUse(Long id) {
+        return create.fetchExists(
+                create.selectOne()
+                        .from(TRANSACTION_ENTRY)
+                        .where(TX_INST_ID.eq(id))
+        );
+    }
+
     public void deleteInstitute(Long id) {
         create.deleteFrom(INSTITUTE)
                 .where(INST_ID.eq(id))

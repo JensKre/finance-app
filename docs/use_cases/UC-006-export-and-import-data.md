@@ -2,10 +2,10 @@
 
 ## Overview
 
-**Use Case ID:** UC-006   
-**Use Case Name:** Export & Import Data   
-**Primary Actor:** Jens & Annika   
-**Goal:** Backup or restore data to/from local storage files.   
+**Use Case ID:** UC-006
+**Use Case Name:** Export & Import Data
+**Primary Actor:** Jens & Annika
+**Goal:** Backup or restore data to/from local storage files.
 **Status:** Approved
 
 ## Preconditions
@@ -45,4 +45,5 @@
 ## Business Rules
 
 ### BR-006: Data Format Consistency
+
 The imported data must contain valid JSON representing all schema tables, matching primary and foreign key constraints.

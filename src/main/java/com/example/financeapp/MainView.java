@@ -103,6 +103,16 @@ public class MainView extends VerticalLayout {
         refreshData();
     }
 
+    private String formatAmount(BigDecimal amount) {
+        if (amount == null) {
+            return "0,00 €";
+        }
+        java.text.DecimalFormat formatter = (java.text.DecimalFormat) java.text.NumberFormat.getInstance(java.util.Locale.GERMANY);
+        formatter.setMinimumFractionDigits(2);
+        formatter.setMaximumFractionDigits(2);
+        return formatter.format(amount) + " €";
+    }
+
     private void refreshData() {
         // Refresh grids
         jensGrid.setItems(service.getTransactions("Jens"));
@@ -131,9 +141,9 @@ public class MainView extends VerticalLayout {
         Div cards = new Div();
         cards.getStyle().set("display", "flex").set("gap", "20px").set("justify-content", "center").set("flex-wrap", "wrap").set("margin-top", "20px");
 
-        cards.add(createCard("Gesamtvermögen", combinedTotal.toString() + " €", "linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)"));
-        cards.add(createCard("Jens", jensTotal.toString() + " €", "linear-gradient(135deg, #11998e 0%, #38ef7d 100%)"));
-        cards.add(createCard("Annika", annikaTotal.toString() + " €", "linear-gradient(135deg, #fc466b 0%, #3f5efb 100%)"));
+        cards.add(createCard("Gesamtvermögen", formatAmount(combinedTotal), "linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)"));
+        cards.add(createCard("Jens", formatAmount(jensTotal), "linear-gradient(135deg, #11998e 0%, #38ef7d 100%)"));
+        cards.add(createCard("Annika", formatAmount(annikaTotal), "linear-gradient(135deg, #fc466b 0%, #3f5efb 100%)"));
 
         dashboardContainer.add(cards);
 
@@ -147,7 +157,7 @@ public class MainView extends VerticalLayout {
         combinedGrid.addColumn(DataService.TransactionDto::date).setHeader("Datum");
         combinedGrid.addColumn(DataService.TransactionDto::institute).setHeader("Institut");
         combinedGrid.addColumn(DataService.TransactionDto::category).setHeader("Kategorie");
-        combinedGrid.addColumn(r -> r.amount().toString() + " €").setHeader("Betrag");
+        combinedGrid.addColumn(r -> formatAmount(r.amount())).setHeader("Betrag");
 
         combinedGrid.setItems(service.getTransactions(null));
         combinedGrid.setAllRowsVisible(true);
@@ -224,7 +234,7 @@ public class MainView extends VerticalLayout {
         grid.addColumn(DataService.TransactionDto::date).setHeader("Datum");
         grid.addColumn(DataService.TransactionDto::institute).setHeader("Institut");
         grid.addColumn(DataService.TransactionDto::category).setHeader("Kategorie");
-        grid.addColumn(r -> r.amount().toString() + " €").setHeader("Betrag");
+        grid.addColumn(r -> formatAmount(r.amount())).setHeader("Betrag");
 
         grid.addComponentColumn(item -> {
             Button deleteBtn = new Button("Löschen", e -> {
@@ -252,7 +262,9 @@ public class MainView extends VerticalLayout {
         grid.setWidth("100%");
         grid.setMaxWidth("800px");
         grid.setAllRowsVisible(true);
+        grid.getStyle().set("align-self", "center");
         layout.add(grid);
+        layout.setHorizontalComponentAlignment(Alignment.CENTER, grid);
 
         return layout;
     }
@@ -324,6 +336,11 @@ public class MainView extends VerticalLayout {
         instGrid.addColumn(DataService.InstituteDto::name).setHeader("Name");
         instGrid.addComponentColumn(item -> {
             Button delBtn = new Button("Löschen", e -> {
+                if (service.isInstituteInUse(item.id())) {
+                    Notification.show("Institut wird verwendet.", 3000, Notification.Position.TOP_CENTER)
+                            .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    return;
+                }
                 service.deleteInstitute(item.id());
                 instGrid.setItems(service.getInstitutes());
                 Notification.show("Institut entfernt.");
@@ -334,7 +351,13 @@ public class MainView extends VerticalLayout {
 
         Button addInstBtn = new Button("Hinzufügen", e -> {
             if (newInstField.isEmpty()) return;
-            service.addInstitute(newInstField.getValue());
+            String name = newInstField.getValue().trim();
+            if (service.instituteExists(name)) {
+                Notification.show("Institut existiert bereits.", 3000, Notification.Position.TOP_CENTER)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                return;
+            }
+            service.addInstitute(name);
             newInstField.clear();
             instGrid.setItems(service.getInstitutes());
             Notification.show("Institut hinzugefügt.");
