@@ -126,6 +126,10 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <!-- Fork is required for DevTools to detect classpath changes -->
+                    <fork>true</fork>
+                </configuration>
             </plugin>
         </plugins>
     </build>

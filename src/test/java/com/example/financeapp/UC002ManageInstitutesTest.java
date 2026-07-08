@@ -44,10 +44,7 @@ class UC002ManageInstitutesTest extends SpringBrowserlessTest {
     }
 
     private void cleanTestAddedInstitutes() {
-        for (DataService.TransactionDto tx : dataService.getTransactions("Jens")) {
-            dataService.deleteTransaction(tx.id());
-        }
-        for (DataService.TransactionDto tx : dataService.getTransactions("Annika")) {
+        for (DataService.TransactionDto tx : dataService.getTransactions(null)) {
             dataService.deleteTransaction(tx.id());
         }
         List<DataService.InstituteDto> insts = dataService.getInstitutes();

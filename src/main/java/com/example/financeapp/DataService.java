@@ -100,6 +100,22 @@ public class DataService {
                 .execute();
     }
 
+    public boolean categoryExists(String name) {
+        return create.fetchExists(
+                create.selectOne()
+                        .from(CATEGORY)
+                        .where(CAT_NAME.equalIgnoreCase(name))
+        );
+    }
+
+    public boolean isCategoryInUse(Long id) {
+        return create.fetchExists(
+                create.selectOne()
+                        .from(TRANSACTION_ENTRY)
+                        .where(TX_CAT_ID.eq(id))
+        );
+    }
+
     public void deleteCategory(Long id) {
         create.deleteFrom(CATEGORY)
                 .where(CAT_ID.eq(id))

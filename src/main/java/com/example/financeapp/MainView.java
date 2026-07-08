@@ -52,6 +52,7 @@ public class MainView extends VerticalLayout {
 
     @Autowired
     public MainView(DataService service) {
+        System.out.println("DEBUG - MainView constructor called!");
         this.service = service;
 
         // Force Dark Mode Lumo Theme
@@ -113,7 +114,7 @@ public class MainView extends VerticalLayout {
         return formatter.format(amount) + " €";
     }
 
-    private void refreshData() {
+    void refreshData() {
         // Refresh grids
         jensGrid.setItems(service.getTransactions("Jens"));
         annikaGrid.setItems(service.getTransactions("Annika"));
@@ -128,41 +129,53 @@ public class MainView extends VerticalLayout {
 
         // Refresh dashboard numbers
         dashboardContainer.removeAll();
-        BigDecimal jensTotal = service.getTransactions("Jens").stream()
-                .map(DataService.TransactionDto::amount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        List<DataService.TransactionDto> allTx = service.getTransactions(null);
+        if (allTx.isEmpty()) {
+            Div noDataMessage = new Div();
+            noDataMessage.setId("no-data-message");
+            noDataMessage.setText("Bitte tragen Sie Ihre erste Transaktion ein, um Daten auf dem Dashboard anzuzeigen.");
+            noDataMessage.getStyle()
+                    .set("margin-top", "50px")
+                    .set("font-size", "1.2rem")
+                    .set("color", "var(--lumo-secondary-text-color)");
+            dashboardContainer.add(noDataMessage);
+        } else {
+            BigDecimal jensTotal = service.getTransactions("Jens").stream()
+                    .map(DataService.TransactionDto::amount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal annikaTotal = service.getTransactions("Annika").stream()
-                .map(DataService.TransactionDto::amount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal annikaTotal = service.getTransactions("Annika").stream()
+                    .map(DataService.TransactionDto::amount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal combinedTotal = jensTotal.add(annikaTotal);
+            BigDecimal combinedTotal = jensTotal.add(annikaTotal);
 
-        Div cards = new Div();
-        cards.getStyle().set("display", "flex").set("gap", "20px").set("justify-content", "center").set("flex-wrap", "wrap").set("margin-top", "20px");
+            Div cards = new Div();
+            cards.getStyle().set("display", "flex").set("gap", "20px").set("justify-content", "center").set("flex-wrap", "wrap").set("margin-top", "20px");
 
-        cards.add(createCard("Gesamtvermögen", formatAmount(combinedTotal), "linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)"));
-        cards.add(createCard("Jens", formatAmount(jensTotal), "linear-gradient(135deg, #11998e 0%, #38ef7d 100%)"));
-        cards.add(createCard("Annika", formatAmount(annikaTotal), "linear-gradient(135deg, #fc466b 0%, #3f5efb 100%)"));
+            cards.add(createCard("Gesamtvermögen", formatAmount(combinedTotal), "linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)"));
+            cards.add(createCard("Jens", formatAmount(jensTotal), "linear-gradient(135deg, #11998e 0%, #38ef7d 100%)"));
+            cards.add(createCard("Annika", formatAmount(annikaTotal), "linear-gradient(135deg, #fc466b 0%, #3f5efb 100%)"));
 
-        dashboardContainer.add(cards);
+            dashboardContainer.add(cards);
 
-        // Simple listing of transactions in Dashboard
-        Div details = new Div();
-        details.getStyle().set("margin-top", "30px").set("width", "100%").set("max-width", "800px");
-        details.add(new H3("Letzte Aktivitäten (Kombiniert)"));
+            // Simple listing of transactions in Dashboard
+            Div details = new Div();
+            details.getStyle().set("margin-top", "30px").set("width", "100%").set("max-width", "800px");
+            details.add(new H3("Letzte Aktivitäten (Kombiniert)"));
 
-        Grid<DataService.TransactionDto> combinedGrid = new Grid<>();
-        combinedGrid.addColumn(DataService.TransactionDto::username).setHeader("Person");
-        combinedGrid.addColumn(DataService.TransactionDto::date).setHeader("Datum");
-        combinedGrid.addColumn(DataService.TransactionDto::institute).setHeader("Institut");
-        combinedGrid.addColumn(DataService.TransactionDto::category).setHeader("Kategorie");
-        combinedGrid.addColumn(r -> formatAmount(r.amount())).setHeader("Betrag");
+            Grid<DataService.TransactionDto> combinedGrid = new Grid<>();
+            combinedGrid.addColumn(DataService.TransactionDto::username).setHeader("Person");
+            combinedGrid.addColumn(DataService.TransactionDto::date).setHeader("Datum");
+            combinedGrid.addColumn(DataService.TransactionDto::institute).setHeader("Institut");
+            combinedGrid.addColumn(DataService.TransactionDto::category).setHeader("Kategorie");
+            combinedGrid.addColumn(r -> formatAmount(r.amount())).setHeader("Betrag");
 
-        combinedGrid.setItems(service.getTransactions(null));
-        combinedGrid.setAllRowsVisible(true);
-        details.add(combinedGrid);
-        dashboardContainer.add(details);
+            combinedGrid.setItems(allTx);
+            combinedGrid.setAllRowsVisible(true);
+            details.add(combinedGrid);
+            dashboardContainer.add(details);
+        }
     }
 
     private Div createCard(String title, String value, String background) {
@@ -294,6 +307,39 @@ public class MainView extends VerticalLayout {
         resultContainer.getStyle().set("margin-top", "20px").set("font-size", "1.3rem").set("font-weight", "bold");
 
         Button calcBtn = new Button("Berechnen", e -> {
+            boolean hasError = false;
+
+            if (savingsField.getValue() == null || savingsField.getValue().compareTo(BigDecimal.ZERO) < 0) {
+                savingsField.setInvalid(true);
+                savingsField.setErrorMessage("Sparrate darf nicht negativ oder leer sein");
+                hasError = true;
+            } else {
+                savingsField.setInvalid(false);
+            }
+
+            if (returnField.getValue() == null || returnField.getValue() < 0) {
+                returnField.setInvalid(true);
+                returnField.setErrorMessage("Rendite darf nicht negativ oder leer sein");
+                hasError = true;
+            } else {
+                returnField.setInvalid(false);
+            }
+
+            if (periodField.getValue() == null || periodField.getValue() <= 0) {
+                periodField.setInvalid(true);
+                periodField.setErrorMessage("Zeitraum muss größer als 0 sein");
+                hasError = true;
+            } else {
+                periodField.setInvalid(false);
+            }
+
+            if (hasError) {
+                Notification notif = Notification.show("Bitte korrigieren Sie die ungültigen Parameter.", 3000, Notification.Position.MIDDLE);
+                notif.addThemeVariants(NotificationVariant.LUMO_ERROR);
+                resultContainer.setText("");
+                return;
+            }
+
             BigDecimal currentWealth = service.getTransactions(null).stream()
                     .map(DataService.TransactionDto::amount)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -375,6 +421,11 @@ public class MainView extends VerticalLayout {
         catGrid.addColumn(DataService.CategoryDto::name).setHeader("Name");
         catGrid.addComponentColumn(item -> {
             Button delBtn = new Button("Löschen", e -> {
+                if (service.isCategoryInUse(item.id())) {
+                    Notification.show("Kategorie wird verwendet.", 3000, Notification.Position.TOP_CENTER)
+                            .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    return;
+                }
                 service.deleteCategory(item.id());
                 catGrid.setItems(service.getCategories());
                 Notification.show("Kategorie entfernt.");
@@ -385,7 +436,13 @@ public class MainView extends VerticalLayout {
 
         Button addCatBtn = new Button("Hinzufügen", e -> {
             if (newCatField.isEmpty()) return;
-            service.addCategory(newCatField.getValue());
+            String name = newCatField.getValue().trim();
+            if (service.categoryExists(name)) {
+                Notification.show("Kategorie existiert bereits.", 3000, Notification.Position.TOP_CENTER)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                return;
+            }
+            service.addCategory(name);
             newCatField.clear();
             catGrid.setItems(service.getCategories());
             Notification.show("Kategorie hinzugefügt.");
