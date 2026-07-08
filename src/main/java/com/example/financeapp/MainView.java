@@ -64,7 +64,7 @@ public class MainView extends VerticalLayout {
         setAlignItems(Alignment.CENTER);
 
         H1 title = new H1("Couples Finance Tracker");
-        title.getStyle().set("margin-top", "10px").set("background", "linear-gradient(45deg, #1572A1, #9ad0ec)").set("-webkit-background-clip", "text").set("-webkit-text-fill-color", "transparent");
+        title.addClassName("page-title");
         add(title);
 
         // Tab setup
@@ -151,11 +151,11 @@ public class MainView extends VerticalLayout {
             BigDecimal combinedTotal = jensTotal.add(annikaTotal);
 
             Div cards = new Div();
-            cards.getStyle().set("display", "flex").set("gap", "20px").set("justify-content", "center").set("flex-wrap", "wrap").set("margin-top", "20px");
+            cards.getStyle().set("display", "flex").set("gap", "24px").set("justify-content", "center").set("flex-wrap", "wrap").set("margin-top", "24px");
 
-            cards.add(createCard("Gesamtvermögen", formatAmount(combinedTotal), "linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)"));
-            cards.add(createCard("Jens", formatAmount(jensTotal), "linear-gradient(135deg, #11998e 0%, #38ef7d 100%)"));
-            cards.add(createCard("Annika", formatAmount(annikaTotal), "linear-gradient(135deg, #fc466b 0%, #3f5efb 100%)"));
+            cards.add(createCard("Gesamtvermögen", formatAmount(combinedTotal), "linear-gradient(135deg, rgba(99, 102, 241, 0.4) 0%, rgba(79, 70, 229, 0.4) 100%)"));
+            cards.add(createCard("Jens", formatAmount(jensTotal), "linear-gradient(135deg, rgba(16, 185, 129, 0.4) 0%, rgba(5, 150, 105, 0.4) 100%)"));
+            cards.add(createCard("Annika", formatAmount(annikaTotal), "linear-gradient(135deg, rgba(236, 72, 153, 0.4) 0%, rgba(219, 39, 119, 0.4) 100%)"));
 
             dashboardContainer.add(cards);
 
@@ -180,13 +180,10 @@ public class MainView extends VerticalLayout {
 
     private Div createCard(String title, String value, String background) {
         Div card = new Div();
+        card.addClassName("metric-card");
         card.getStyle()
                 .set("background", background)
-                .set("border-radius", "12px")
-                .set("padding", "20px")
-                .set("width", "220px")
-                .set("box-shadow", "0 4px 15px rgba(0,0,0,0.3)")
-                .set("text-align", "center")
+                .set("width", "240px")
                 .set("color", "white");
 
         H3 t = new H3(title);
@@ -217,7 +214,7 @@ public class MainView extends VerticalLayout {
         HorizontalLayout form = new HorizontalLayout();
         form.setAlignItems(Alignment.END);
         form.setSpacing(true);
-        form.getStyle().set("background", "#202020").set("padding", "15px").set("border-radius", "8px");
+        form.addClassName("glass-panel");
 
         BigDecimalField amountField = new BigDecimalField("Betrag (€)");
         amountField.setPlaceholder("z.B. 1500.00");
@@ -292,7 +289,7 @@ public class MainView extends VerticalLayout {
         VerticalLayout calcForm = new VerticalLayout();
         calcForm.setAlignItems(Alignment.CENTER);
         calcForm.setMaxWidth("400px");
-        calcForm.getStyle().set("background", "#202020").set("padding", "20px").set("border-radius", "8px");
+        calcForm.addClassName("glass-panel");
 
         BigDecimalField savingsField = new BigDecimalField("Monatliche Sparrate (€)");
         savingsField.setValue(new BigDecimal("500"));
@@ -374,6 +371,7 @@ public class MainView extends VerticalLayout {
 
         // Institutes management
         VerticalLayout instLayout = new VerticalLayout();
+        instLayout.addClassName("glass-panel");
         instLayout.add(new H3("Institute verwalten"));
         TextField newInstField = new TextField();
         newInstField.setPlaceholder("Neues Institut...");
@@ -413,6 +411,7 @@ public class MainView extends VerticalLayout {
 
         // Categories management
         VerticalLayout catLayout = new VerticalLayout();
+        catLayout.addClassName("glass-panel");
         catLayout.add(new H3("Kategorien verwalten"));
         TextField newCatField = new TextField();
         newCatField.setPlaceholder("Neue Kategorie...");

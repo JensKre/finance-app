@@ -9,9 +9,8 @@ PROJECT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROD_DIR="$PROJECT_DIR/finance-app-prod"
 
 if [ ! -d "$PROD_DIR" ]; then
-    echo "❌ Fehler: Der Ordner 'finance-app-prod' existiert nicht!"
-    echo "Der Prozess wird abgebrochen. Bitte erstelle den Ordner zuerst."
-    exit 1
+    echo "📁 Erstelle den Ordner 'finance-app-prod'..."
+    mkdir -p "$PROD_DIR"
 fi
 
 echo "🏗️  Starte Produktions-Build..."

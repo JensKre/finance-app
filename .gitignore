@@ -6,3 +6,4 @@ target/
 finance-app-prod/
 *.db
 *.db.3
+node_modules
