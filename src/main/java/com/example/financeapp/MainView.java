@@ -43,12 +43,12 @@ public class MainView extends VerticalLayout {
 
     // Elements to refresh across tabs
     private final Div dashboardContainer = new Div();
-    private final Grid<DataService.TransactionDto> jensGrid = new Grid<>();
-    private final Grid<DataService.TransactionDto> annikaGrid = new Grid<>();
-    private final ComboBox<String> jensInstCombo = new ComboBox<>("Institut");
-    private final ComboBox<String> jensCatCombo = new ComboBox<>("Kategorie");
-    private final ComboBox<String> annikaInstCombo = new ComboBox<>("Institut");
-    private final ComboBox<String> annikaCatCombo = new ComboBox<>("Kategorie");
+    private final Grid<DataService.DateSummaryDto> jensDatesGrid = new Grid<>();
+    private final Grid<DataService.DateSummaryDto> annikaDatesGrid = new Grid<>();
+    private final DatePicker jensDatePicker = new DatePicker("Datum");
+    private final DatePicker annikaDatePicker = new DatePicker("Datum");
+    private final VerticalLayout jensFormRowsContainer = new VerticalLayout();
+    private final VerticalLayout annikaFormRowsContainer = new VerticalLayout();
 
     @Autowired
     public MainView(DataService service) {
@@ -80,8 +80,8 @@ public class MainView extends VerticalLayout {
 
         // Create component contents
         tabComponentMap.put(dashboardTab, createDashboardContent());
-        tabComponentMap.put(jensTab, createUserTabContent("Jens", jensGrid, jensInstCombo, jensCatCombo));
-        tabComponentMap.put(annikaTab, createUserTabContent("Annika", annikaGrid, annikaInstCombo, annikaCatCombo));
+        tabComponentMap.put(jensTab, createUserTabContent("Jens", jensDatesGrid, jensDatePicker, jensFormRowsContainer));
+        tabComponentMap.put(annikaTab, createUserTabContent("Annika", annikaDatesGrid, annikaDatePicker, annikaFormRowsContainer));
         tabComponentMap.put(forecastTab, createForecastContent());
         tabComponentMap.put(settingsTab, createSettingsContent());
 
@@ -116,16 +116,12 @@ public class MainView extends VerticalLayout {
 
     void refreshData() {
         // Refresh grids
-        jensGrid.setItems(service.getTransactions("Jens"));
-        annikaGrid.setItems(service.getTransactions("Annika"));
+        jensDatesGrid.setItems(service.getDateSummaries("Jens"));
+        annikaDatesGrid.setItems(service.getDateSummaries("Annika"));
 
-        // Refresh combo box items
-        List<String> institutes = service.getInstitutes().stream().map(DataService.InstituteDto::name).collect(Collectors.toList());
-        List<String> categories = service.getCategories().stream().map(DataService.CategoryDto::name).collect(Collectors.toList());
-        jensInstCombo.setItems(institutes);
-        jensCatCombo.setItems(categories);
-        annikaInstCombo.setItems(institutes);
-        annikaCatCombo.setItems(categories);
+        // Rebuild active form rows
+        rebuildFormRows("Jens", jensDatePicker.getValue(), jensFormRowsContainer);
+        rebuildFormRows("Annika", annikaDatePicker.getValue(), annikaFormRowsContainer);
 
         // Refresh dashboard numbers
         dashboardContainer.removeAll();
@@ -140,14 +136,8 @@ public class MainView extends VerticalLayout {
                     .set("color", "var(--lumo-secondary-text-color)");
             dashboardContainer.add(noDataMessage);
         } else {
-            BigDecimal jensTotal = service.getTransactions("Jens").stream()
-                    .map(DataService.TransactionDto::amount)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            BigDecimal annikaTotal = service.getTransactions("Annika").stream()
-                    .map(DataService.TransactionDto::amount)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-
+            BigDecimal jensTotal = service.getCurrentWealth("Jens");
+            BigDecimal annikaTotal = service.getCurrentWealth("Annika");
             BigDecimal combinedTotal = jensTotal.add(annikaTotal);
 
             Div cards = new Div();
@@ -201,62 +191,31 @@ public class MainView extends VerticalLayout {
         return dashboardContainer;
     }
 
-    private Component createUserTabContent(String username, Grid<DataService.TransactionDto> grid, ComboBox<String> instCombo, ComboBox<String> catCombo) {
-        VerticalLayout layout = new VerticalLayout();
-        layout.setWidth("100%");
-        layout.setAlignItems(Alignment.CENTER);
-        layout.setSpacing(true);
+    private Component createUserTabContent(String username, Grid<DataService.DateSummaryDto> datesGrid, DatePicker datePicker, VerticalLayout formRowsContainer) {
+        HorizontalLayout mainSplit = new HorizontalLayout();
+        mainSplit.setSizeFull();
+        mainSplit.setSpacing(true);
 
-        H2 header = new H2(username + "'s Finanzverwaltung");
-        layout.add(header);
+        // Left Column: History
+        VerticalLayout leftCol = new VerticalLayout();
+        leftCol.setWidth("40%");
+        leftCol.setSpacing(true);
+        leftCol.add(new H3("Historische Einträge"));
 
-        // Entry form
-        HorizontalLayout form = new HorizontalLayout();
-        form.setAlignItems(Alignment.END);
-        form.setSpacing(true);
-        form.addClassName("glass-panel");
+        datesGrid.addColumn(DataService.DateSummaryDto::date).setHeader("Datum");
+        datesGrid.addColumn(r -> formatAmount(r.totalAmount())).setHeader("Gesamt");
 
-        BigDecimalField amountField = new BigDecimalField("Betrag (€)");
-        amountField.setPlaceholder("z.B. 1500.00");
-
-        DatePicker datePicker = new DatePicker("Datum");
-        datePicker.setValue(LocalDate.now());
-
-        Button submitBtn = new Button("Hinzufügen", e -> {
-            if (amountField.getValue() == null || instCombo.getValue() == null || catCombo.getValue() == null || datePicker.getValue() == null) {
-                Notification.show("Bitte fülle alle Felder aus!", 3000, Notification.Position.TOP_CENTER).addThemeVariants(NotificationVariant.LUMO_ERROR);
-                return;
-            }
-            service.addTransaction(username, instCombo.getValue(), catCombo.getValue(), amountField.getValue(), datePicker.getValue());
-            amountField.clear();
-            instCombo.clear();
-            catCombo.clear();
-            datePicker.setValue(LocalDate.now());
-            refreshData();
-            Notification.show("Eintrag erfolgreich hinzugefügt!", 2000, Notification.Position.TOP_CENTER).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-        });
-        submitBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-
-        form.add(amountField, instCombo, catCombo, datePicker, submitBtn);
-        layout.add(form);
-
-        // Grid
-        grid.addColumn(DataService.TransactionDto::date).setHeader("Datum");
-        grid.addColumn(DataService.TransactionDto::institute).setHeader("Institut");
-        grid.addColumn(DataService.TransactionDto::category).setHeader("Kategorie");
-        grid.addColumn(r -> formatAmount(r.amount())).setHeader("Betrag");
-
-        grid.addComponentColumn(item -> {
+        datesGrid.addComponentColumn(item -> {
             Button deleteBtn = new Button("Löschen", e -> {
                 Dialog confirmDialog = new Dialog();
-                confirmDialog.setHeaderTitle("Eintrag löschen?");
-                confirmDialog.add(new Paragraph("Möchtest du diesen Eintrag wirklich unwiderruflich löschen?"));
+                confirmDialog.setHeaderTitle("Einträge löschen?");
+                confirmDialog.add(new Paragraph("Möchtest du alle Einträge für den " + item.date() + " wirklich unwiderruflich löschen?"));
 
                 Button confirmBtn = new Button("Ja, löschen", event -> {
-                    service.deleteTransaction(item.id());
+                    service.deleteEntriesForDate(username, item.date());
                     refreshData();
                     confirmDialog.close();
-                    Notification.show("Eintrag gelöscht.", 2000, Notification.Position.TOP_CENTER);
+                    Notification.show("Einträge gelöscht.", 2000, Notification.Position.TOP_CENTER);
                 });
                 confirmBtn.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_PRIMARY);
 
@@ -269,14 +228,194 @@ public class MainView extends VerticalLayout {
             return deleteBtn;
         }).setHeader("Aktion");
 
-        grid.setWidth("100%");
-        grid.setMaxWidth("800px");
-        grid.setAllRowsVisible(true);
-        grid.getStyle().set("align-self", "center");
-        layout.add(grid);
-        layout.setHorizontalComponentAlignment(Alignment.CENTER, grid);
+        datesGrid.setWidthFull();
+        datesGrid.setAllRowsVisible(true);
 
-        return layout;
+        leftCol.add(datesGrid);
+
+        // Right Column: Form
+        VerticalLayout rightCol = new VerticalLayout();
+        rightCol.setWidth("60%");
+        rightCol.setSpacing(true);
+        rightCol.addClassName("glass-panel");
+
+        rightCol.add(new H3("Werte eintragen / bearbeiten"));
+
+        datePicker.setValue(LocalDate.now());
+        datePicker.addValueChangeListener(e -> {
+            rebuildFormRows(username, e.getValue(), formRowsContainer);
+        });
+
+        formRowsContainer.setWidthFull();
+        formRowsContainer.setSpacing(true);
+        formRowsContainer.setPadding(false);
+
+        Button saveBtn = new Button("Speichern", e -> {
+            saveFormValues(username, datePicker.getValue(), formRowsContainer);
+        });
+        saveBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        rightCol.add(datePicker, formRowsContainer, saveBtn);
+
+        mainSplit.add(leftCol, rightCol);
+
+        // When selecting an entry in the grid, load it into the form
+        datesGrid.asSingleSelect().addValueChangeListener(event -> {
+            if (event.getValue() != null) {
+                datePicker.setValue(event.getValue().date());
+            }
+        });
+
+        return mainSplit;
+    }
+
+    private void rebuildFormRows(String username, LocalDate date, VerticalLayout container) {
+        container.removeAll();
+        if (date == null) {
+            return;
+        }
+
+        List<DataService.InstituteDto> institutes = service.getInstitutes();
+        List<String> categories = service.getCategories().stream().map(DataService.CategoryDto::name).collect(Collectors.toList());
+
+        // Get existing entries for this specific date
+        List<DataService.DateEntryDto> currentEntries = service.getEntriesForDate(username, date);
+
+        List<DataService.DateEntryDto> targetEntriesList;
+        if (!currentEntries.isEmpty()) {
+            targetEntriesList = currentEntries;
+        } else {
+            LocalDate lastDate = service.getMostRecentEntryDateBefore(username, date);
+            if (lastDate != null) {
+                targetEntriesList = service.getEntriesForDate(username, lastDate);
+            } else {
+                targetEntriesList = List.of();
+            }
+        }
+
+        java.util.Set<String> renderedInstitutes = new java.util.HashSet<>();
+
+        for (var entry : targetEntriesList) {
+            renderedInstitutes.add(entry.instituteName());
+
+            BigDecimal referenceAmount = null;
+            String referenceCategory = entry.categoryName();
+
+            if (!currentEntries.isEmpty()) {
+                DataService.LastEntryDto last = service.getLastEntry(username, entry.instituteName(), entry.categoryName(), date.minusDays(1));
+                if (last != null) {
+                    referenceAmount = last.amount();
+                }
+            } else {
+                referenceAmount = entry.amount();
+            }
+
+            HorizontalLayout row = createEntryRow(entry.instituteName(), categories, referenceAmount, referenceCategory, !currentEntries.isEmpty() ? entry.amount() : null, entry.categoryName());
+            container.add(row);
+        }
+
+        for (var inst : institutes) {
+            if (!renderedInstitutes.contains(inst.name())) {
+                DataService.LastEntryDto last = service.getLastEntry(username, inst.name(), date);
+                BigDecimal referenceAmount = (last != null) ? last.amount() : null;
+                String referenceCategory = (last != null) ? last.categoryName() : null;
+
+                HorizontalLayout row = createEntryRow(inst.name(), categories, referenceAmount, referenceCategory, null, referenceCategory);
+                container.add(row);
+            }
+        }
+    }
+
+    private HorizontalLayout createEntryRow(String instituteName, List<String> categories, BigDecimal referenceAmount, String referenceCategory, BigDecimal currentValue, String currentCategory) {
+        HorizontalLayout row = new HorizontalLayout();
+        row.setAlignItems(Alignment.CENTER);
+        row.setSpacing(true);
+        row.setWidthFull();
+
+        Span nameLabel = new Span(instituteName);
+        nameLabel.getStyle().set("font-weight", "bold").set("width", "180px");
+
+        Span referenceSpan = new Span();
+        if (referenceAmount != null) {
+            String catPart = referenceCategory != null ? " (" + referenceCategory + ")" : "";
+            referenceSpan.setText("Zuletzt: " + formatAmount(referenceAmount) + catPart);
+        } else {
+            referenceSpan.setText("Kein vorheriger Wert");
+        }
+        referenceSpan.getStyle().set("color", "var(--lumo-secondary-text-color)").set("width", "220px");
+
+        BigDecimalField amountField = new BigDecimalField();
+        amountField.setPlaceholder("Neuer Wert (€)");
+        amountField.setWidth("150px");
+        if (currentValue != null) {
+            amountField.setValue(currentValue);
+        }
+        amountField.getElement().setAttribute("data-inst", instituteName);
+
+        ComboBox<String> categoryCombo = new ComboBox<>();
+        categoryCombo.setItems(categories);
+        categoryCombo.setPlaceholder("Kategorie");
+        categoryCombo.setWidth("150px");
+        if (currentCategory != null) {
+            categoryCombo.setValue(currentCategory);
+        }
+
+        row.add(nameLabel, referenceSpan, amountField, categoryCombo);
+        return row;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void saveFormValues(String username, LocalDate date, VerticalLayout container) {
+        if (date == null) {
+            Notification.show("Bitte ein Datum auswählen!", 3000, Notification.Position.TOP_CENTER)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            return;
+        }
+
+        List<DataService.DateEntryDto> entries = new java.util.ArrayList<>();
+
+        for (int i = 0; i < container.getComponentCount(); i++) {
+            Component child = container.getComponentAt(i);
+            if (child instanceof HorizontalLayout row) {
+                BigDecimalField amtField = null;
+                ComboBox<String> catCombo = null;
+                String instName = null;
+
+                for (int j = 0; j < row.getComponentCount(); j++) {
+                    Component rowChild = row.getComponentAt(j);
+                    if (rowChild instanceof BigDecimalField field) {
+                        amtField = field;
+                        instName = field.getElement().getAttribute("data-inst");
+                    } else if (rowChild instanceof ComboBox<?> combo) {
+                        catCombo = (ComboBox<String>) combo;
+                    }
+                }
+
+                if (instName != null && amtField != null && catCombo != null) {
+                    BigDecimal amount = amtField.getValue();
+                    String category = catCombo.getValue();
+
+                    if (amount != null) {
+                        if (amount.compareTo(BigDecimal.ZERO) < 0) {
+                            Notification.show("Beträge dürfen nicht negativ sein!", 3000, Notification.Position.TOP_CENTER)
+                                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                            return;
+                        }
+                        if (category == null || category.isEmpty()) {
+                            Notification.show("Bitte Kategorie für " + instName + " auswählen!", 3000, Notification.Position.TOP_CENTER)
+                                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                            return;
+                        }
+                        entries.add(new DataService.DateEntryDto(instName, category, amount));
+                    }
+                }
+            }
+        }
+
+        service.saveEntriesForDate(username, date, entries);
+        refreshData();
+        Notification.show("Einträge erfolgreich gespeichert!", 2000, Notification.Position.TOP_CENTER)
+                .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
 
     private Component createForecastContent() {
@@ -337,9 +476,7 @@ public class MainView extends VerticalLayout {
                 return;
             }
 
-            BigDecimal currentWealth = service.getTransactions(null).stream()
-                    .map(DataService.TransactionDto::amount)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal currentWealth = service.getCurrentWealth(null);
 
             double rate = returnField.getValue() / 100.0 / 12.0;
             int months = periodField.getValue() * 12;

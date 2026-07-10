@@ -45,6 +45,9 @@ public class DataService {
     public record InstituteDto(Long id, String name) {}
     public record CategoryDto(Long id, String name) {}
     public record TransactionDto(Long id, String username, String institute, String category, BigDecimal amount, LocalDate date) {}
+    public record DateSummaryDto(LocalDate date, BigDecimal totalAmount) {}
+    public record LastEntryDto(BigDecimal amount, String categoryName) {}
+    public record DateEntryDto(String instituteName, String categoryName, BigDecimal amount) {}
 
     public List<UserDto> getUsers() {
         return create.select(USER_ID, USERNAME)
@@ -165,5 +168,128 @@ public class DataService {
         create.deleteFrom(TRANSACTION_ENTRY)
                 .where(TX_ID.eq(id))
                 .execute();
+    }
+
+    public List<DateSummaryDto> getDateSummaries(String username) {
+        return create.select(TX_DATE, sum(TX_AMOUNT))
+                .from(TRANSACTION_ENTRY)
+                .join(APP_USER).on(TX_USER_ID.eq(USER_ID))
+                .where(USERNAME.eq(username))
+                .groupBy(TX_DATE)
+                .orderBy(TX_DATE.desc())
+                .fetch(r -> new DateSummaryDto(r.get(TX_DATE), r.get(sum(TX_AMOUNT), BigDecimal.class)));
+    }
+
+    public LastEntryDto getLastEntry(String username, String instituteName, LocalDate beforeOrOnDate) {
+        var record = create.select(TX_AMOUNT, CAT_NAME)
+                .from(TRANSACTION_ENTRY)
+                .join(APP_USER).on(TX_USER_ID.eq(USER_ID))
+                .join(INSTITUTE).on(TX_INST_ID.eq(INST_ID))
+                .join(CATEGORY).on(TX_CAT_ID.eq(CAT_ID))
+                .where(USERNAME.eq(username))
+                .and(INST_NAME.eq(instituteName))
+                .and(TX_DATE.lessOrEqual(beforeOrOnDate))
+                .orderBy(TX_DATE.desc(), TX_ID.desc())
+                .limit(1)
+                .fetchOne();
+        if (record == null) {
+            return null;
+        }
+        return new LastEntryDto(record.get(TX_AMOUNT), record.get(CAT_NAME));
+    }
+
+    public LastEntryDto getLastEntry(String username, String instituteName, String categoryName, LocalDate beforeOrOnDate) {
+        var record = create.select(TX_AMOUNT, CAT_NAME)
+                .from(TRANSACTION_ENTRY)
+                .join(APP_USER).on(TX_USER_ID.eq(USER_ID))
+                .join(INSTITUTE).on(TX_INST_ID.eq(INST_ID))
+                .join(CATEGORY).on(TX_CAT_ID.eq(CAT_ID))
+                .where(USERNAME.eq(username))
+                .and(INST_NAME.eq(instituteName))
+                .and(CAT_NAME.eq(categoryName))
+                .and(TX_DATE.lessOrEqual(beforeOrOnDate))
+                .orderBy(TX_DATE.desc(), TX_ID.desc())
+                .limit(1)
+                .fetchOne();
+        if (record == null) {
+            return null;
+        }
+        return new LastEntryDto(record.get(TX_AMOUNT), record.get(CAT_NAME));
+    }
+
+    public LocalDate getMostRecentEntryDateBefore(String username, LocalDate date) {
+        return create.select(TX_DATE)
+                .from(TRANSACTION_ENTRY)
+                .join(APP_USER).on(TX_USER_ID.eq(USER_ID))
+                .where(USERNAME.eq(username))
+                .and(TX_DATE.lessThan(date))
+                .orderBy(TX_DATE.desc())
+                .limit(1)
+                .fetchOne(TX_DATE);
+    }
+
+    public List<DateEntryDto> getEntriesForDate(String username, LocalDate date) {
+        return create.select(INST_NAME, CAT_NAME, TX_AMOUNT)
+                .from(TRANSACTION_ENTRY)
+                .join(APP_USER).on(TX_USER_ID.eq(USER_ID))
+                .join(INSTITUTE).on(TX_INST_ID.eq(INST_ID))
+                .join(CATEGORY).on(TX_CAT_ID.eq(CAT_ID))
+                .where(USERNAME.eq(username))
+                .and(TX_DATE.eq(date))
+                .fetch(r -> new DateEntryDto(r.get(INST_NAME), r.get(CAT_NAME), r.get(TX_AMOUNT)));
+    }
+
+    public void saveEntriesForDate(String username, LocalDate date, Collection<DateEntryDto> entries) {
+        Long userId = create.select(USER_ID).from(APP_USER).where(USERNAME.eq(username)).fetchOne(USER_ID);
+        if (userId == null) return;
+
+        create.deleteFrom(TRANSACTION_ENTRY)
+                .where(TX_USER_ID.eq(userId))
+                .and(TX_DATE.eq(date))
+                .execute();
+
+        for (var entry : entries) {
+            if (entry.amount() == null) {
+                continue;
+            }
+            Long instId = create.select(INST_ID).from(INSTITUTE).where(INST_NAME.eq(entry.instituteName())).fetchOne(INST_ID);
+            Long catId = create.select(CAT_ID).from(CATEGORY).where(CAT_NAME.eq(entry.categoryName())).fetchOne(CAT_ID);
+            if (instId != null && catId != null) {
+                create.insertInto(TRANSACTION_ENTRY, TX_USER_ID, TX_INST_ID, TX_CAT_ID, TX_AMOUNT, TX_DATE)
+                        .values(userId, instId, catId, entry.amount(), date)
+                        .execute();
+            }
+        }
+    }
+
+    public void deleteEntriesForDate(String username, LocalDate date) {
+        Long userId = create.select(USER_ID).from(APP_USER).where(USERNAME.eq(username)).fetchOne(USER_ID);
+        if (userId == null) return;
+        create.deleteFrom(TRANSACTION_ENTRY)
+                .where(TX_USER_ID.eq(userId))
+                .and(TX_DATE.eq(date))
+                .execute();
+    }
+
+    public BigDecimal getCurrentWealth(String username) {
+        if (username != null) {
+            return getLatestBalances(username).values().stream()
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        } else {
+            return getLatestBalances("Jens").values().stream().reduce(BigDecimal.ZERO, BigDecimal::add)
+                    .add(getLatestBalances("Annika").values().stream().reduce(BigDecimal.ZERO, BigDecimal::add));
+        }
+    }
+
+    private Map<String, BigDecimal> getLatestBalances(String username) {
+        Map<String, BigDecimal> balances = new HashMap<>();
+        List<InstituteDto> institutes = getInstitutes();
+        for (var inst : institutes) {
+            LastEntryDto last = getLastEntry(username, inst.name(), LocalDate.now());
+            if (last != null && last.amount() != null) {
+                balances.put(inst.name(), last.amount());
+            }
+        }
+        return balances;
     }
 }
