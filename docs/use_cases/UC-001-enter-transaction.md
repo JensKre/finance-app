@@ -5,7 +5,7 @@
 **Use Case ID:** UC-001
 **Use Case Name:** Enter Transaction
 **Primary Actor:** Jens & Annika
-**Goal:** Allows a user (Jens or Annika) to enter and track a new set of financial entries (amounts and categories) for all active financial institutions for a specific date, showing previously recorded values for guidance.
+**Goal:** Allows a user (Jens or Annika) to enter and track a new set of financial entries (amounts and categories) for all active accounts (combinations of institution and category) for a specific date, showing previously recorded values for guidance.
 **Status:** Updated
 
 ## Preconditions
@@ -17,12 +17,12 @@
 
 1. User selects their individual tab (Jens or Annika).
 2. System displays the historical entry dates list and the transaction entry form for the selected date.
-3. System lists all active financial institutions in the form, displaying the most recently recorded amount for each institution for user reference.
+3. System lists all active accounts (combinations of institution and category) in the form, displaying the most recently recorded amount for each account for user reference.
 4. User sets or modifies the entry date for the new dataset.
-5. For each financial institution, the user enters the new amount and selects the asset category.
+5. For each account, the user enters the new amount and selects or confirms the category.
 6. User submits the entries for the selected date.
 7. System validates the entry details (amount formats, valid categories).
-8. System records the new transaction entries for each institution for the specified date.
+8. System records the new transaction entries for each account for the specified date.
 9. System updates the historical entry dates list, updates the dashboard totals, and displays a success notification.
 
 ## Alternative Flows
@@ -40,7 +40,7 @@
 **Trigger:** User selects a historical entry date from the list (step 2)
 **Flow:**
 
-1. System displays the recorded transaction entries for all institutions on that specific date.
+1. System displays the recorded transaction entries for all accounts on that specific date.
 2. User modifies the amounts/categories or clicks the delete action to remove all entries for that date.
 3. If modifying, user submits the entries (use case continues at step 6).
 4. If deleting, system displays a confirmation dialog asking the user to confirm the deletion.
@@ -61,7 +61,7 @@
 
 ### Success Postconditions
 
-- The transaction entries for all institutions for the specified date are persistently saved (if added/modified) or permanently removed (if deleted).
+- The transaction entries for all accounts for the specified date are persistently saved (if added/modified) or permanently removed (if deleted).
 - The user's historical entries list and dashboard totals are updated.
 
 ### Failure Postconditions
