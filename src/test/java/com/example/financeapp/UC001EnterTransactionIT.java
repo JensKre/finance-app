@@ -2,6 +2,7 @@ package com.example.financeapp;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayName;
@@ -19,7 +20,6 @@ import org.vaadin.addons.dramafinder.element.DatePickerElement;
 import org.vaadin.addons.dramafinder.element.DialogElement;
 import org.vaadin.addons.dramafinder.element.GridElement;
 import org.vaadin.addons.dramafinder.element.NotificationElement;
-import org.vaadin.addons.dramafinder.element.TextFieldElement;
 import org.vaadin.addons.dramafinder.element.TabElement;
 
 import com.example.financeapp.usecase.UseCase;
@@ -47,12 +47,17 @@ class UC001EnterTransactionIT extends AbstractBasePlaywrightIT {
 
     @org.junit.jupiter.api.BeforeEach
     void cleanDatabase() {
-        for (DataService.TransactionDto tx : dataService.getTransactions("Jens")) {
-            dataService.deleteTransaction(tx.id());
+        // Clean up entries created during tests
+        List<LocalDate> dates = List.of(LocalDate.now(), LocalDate.of(2026, 7, 6));
+        for (LocalDate date : dates) {
+            dataService.deleteEntriesForDate("Jens", date);
+            dataService.deleteEntriesForDate("Annika", date);
         }
-        for (DataService.TransactionDto tx : dataService.getTransactions("Annika")) {
-            dataService.deleteTransaction(tx.id());
-        }
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void cleanAfter() {
+        cleanDatabase();
     }
 
     private void waitForVaadin() {
@@ -73,29 +78,33 @@ class UC001EnterTransactionIT extends AbstractBasePlaywrightIT {
             jensTab.click();
             waitForVaadin();
 
-            BigDecimalFieldElement amountField = BigDecimalFieldElement.getByLabel(page, "Betrag (€)");
-            amountField.setValue("123,45");
-
-            ComboBoxElement instituteCombo = ComboBoxElement.getByLabel(page, "Institut");
-            instituteCombo.selectItem("Sparkasse");
-
-            ComboBoxElement categoryCombo = ComboBoxElement.getByLabel(page, "Kategorie");
-            categoryCombo.selectItem("Girokonto");
-
             DatePickerElement datePicker = DatePickerElement.getByLabel(page, "Datum");
-            datePicker.setValue(LocalDate.now());
+            datePicker.setValue(LocalDate.of(2026, 7, 6));
+            waitForVaadin();
 
-            ButtonElement submitBtn = ButtonElement.getByText(page, "Hinzufügen");
+            BigDecimalFieldElement amountField = new BigDecimalFieldElement(
+                    page.locator("vaadin-big-decimal-field[data-inst='Trade Republic']").first());
+            amountField.setValue("1250,50");
+
+            ComboBoxElement categoryCombo = new ComboBoxElement(
+                    page.locator("vaadin-horizontal-layout:has(span:has-text('Trade Republic')) vaadin-combo-box").first());
+            categoryCombo.selectItem("ETF");
+
+            ButtonElement submitBtn = ButtonElement.getByText(page, "Speichern");
             submitBtn.click();
+            waitForVaadin();
 
             NotificationElement notif = new NotificationElement(page);
             notif.assertOpen();
-            assertThat(notif.getLocator().innerText()).contains("Eintrag erfolgreich hinzugefügt!");
+            assertThat(notif.getLocator().innerText()).contains("Einträge erfolgreich gespeichert!");
 
             GridElement grid = GridElement.get(page);
-            Optional<GridElement.CellElement> amountCell = grid.findCell(0, "Betrag");
+            Optional<GridElement.CellElement> dateCell = grid.findCell(0, "Datum");
+            Optional<GridElement.CellElement> amountCell = grid.findCell(0, "Gesamt");
+            assertThat(dateCell.isPresent()).isTrue();
             assertThat(amountCell.isPresent()).isTrue();
-            com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat(amountCell.get().getCellContentLocator()).hasText("123,45 €");
+            com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat(dateCell.get().getCellContentLocator()).hasText("2026-07-06");
+            com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat(amountCell.get().getCellContentLocator()).hasText("1.250,50 €");
         }
     }
 
@@ -112,19 +121,31 @@ class UC001EnterTransactionIT extends AbstractBasePlaywrightIT {
             jensTab.click();
             waitForVaadin();
 
-            ButtonElement submitBtn = ButtonElement.getByText(page, "Hinzufügen");
+            BigDecimalFieldElement amountField = new BigDecimalFieldElement(
+                    page.locator("vaadin-big-decimal-field[data-inst='Sparkasse']").first());
+            amountField.setValue("500,00");
+
+            ComboBoxElement categoryCombo = new ComboBoxElement(
+                    page.locator("vaadin-horizontal-layout:has(span:has-text('Sparkasse')) vaadin-combo-box").first());
+            categoryCombo.getLocator().locator("input").fill("");
+
+            ButtonElement submitBtn = ButtonElement.getByText(page, "Speichern");
             submitBtn.click();
+            waitForVaadin();
 
             NotificationElement notif = new NotificationElement(page);
             notif.assertOpen();
-            assertThat(notif.getLocator().innerText()).contains("Bitte fülle alle Felder aus!");
+            assertThat(notif.getLocator().innerText()).contains("Bitte Kategorie für Sparkasse auswählen!");
         }
 
         @Test
-        @UseCase(id = "UC-001", scenario = "A2: Delete Transaction")
+        @UseCase(id = "UC-001", scenario = "A2: Modify/Delete Existing Date Entries")
         @DisplayName("Delete transaction opens dialog and deletes entry")
         void delete_transaction_confirms_and_deletes() {
-            dataService.addTransaction("Jens", "Sparkasse", "Girokonto", new BigDecimal("500.00"), LocalDate.now());
+            java.util.Map<String, DataService.DateEntryDto> entries = new java.util.HashMap<>();
+            entries.put("Sparkasse", new DataService.DateEntryDto("Sparkasse", "Girokonto", new BigDecimal("500.00")));
+            dataService.saveEntriesForDate("Jens", LocalDate.now(), entries.values());
+
             page.reload();
             waitForVaadin();
 
@@ -142,7 +163,7 @@ class UC001EnterTransactionIT extends AbstractBasePlaywrightIT {
             ButtonElement deleteBtn = ButtonElement.getByText(actionCell.get().getCellContentLocator(), "Löschen");
             deleteBtn.click();
 
-            DialogElement dialog = DialogElement.getByHeaderText(page, "Eintrag löschen?");
+            DialogElement dialog = DialogElement.getByHeaderText(page, "Einträge löschen?");
             dialog.assertOpen();
 
             ButtonElement confirmBtn = ButtonElement.getByText(dialog.getLocator(), "Ja, löschen");
@@ -158,7 +179,10 @@ class UC001EnterTransactionIT extends AbstractBasePlaywrightIT {
         @UseCase(id = "UC-001", scenario = "A3: Cancel Deletion")
         @DisplayName("Cancel deletion closes dialog and preserves entry")
         void cancel_deletion_does_not_delete() {
-            dataService.addTransaction("Jens", "Sparkasse", "Girokonto", new BigDecimal("500.00"), LocalDate.now());
+            java.util.Map<String, DataService.DateEntryDto> entries = new java.util.HashMap<>();
+            entries.put("Sparkasse", new DataService.DateEntryDto("Sparkasse", "Girokonto", new BigDecimal("500.00")));
+            dataService.saveEntriesForDate("Jens", LocalDate.now(), entries.values());
+
             page.reload();
             waitForVaadin();
 
@@ -176,7 +200,7 @@ class UC001EnterTransactionIT extends AbstractBasePlaywrightIT {
             ButtonElement deleteBtn = ButtonElement.getByText(actionCell.get().getCellContentLocator(), "Löschen");
             deleteBtn.click();
 
-            DialogElement dialog = DialogElement.getByHeaderText(page, "Eintrag löschen?");
+            DialogElement dialog = DialogElement.getByHeaderText(page, "Einträge löschen?");
             dialog.assertOpen();
 
             ButtonElement cancelBtn = ButtonElement.getByText(dialog.getLocator(), "Abbrechen");
@@ -193,10 +217,13 @@ class UC001EnterTransactionIT extends AbstractBasePlaywrightIT {
     class BusinessRules {
 
         @Test
-        @UseCase(id = "UC-001", scenario = "Main Success Scenario", businessRules = {"BR-002"})
+        @UseCase(id = "UC-001", scenario = "Main Success Scenario", businessRules = {"BR-007"})
         @DisplayName("Monetary format follows German locale")
         void currency_formatting_follows_german_locale() {
-            dataService.addTransaction("Jens", "Sparkasse", "Girokonto", new BigDecimal("1234567.89"), LocalDate.now());
+            java.util.Map<String, DataService.DateEntryDto> entries = new java.util.HashMap<>();
+            entries.put("Sparkasse", new DataService.DateEntryDto("Sparkasse", "Girokonto", new BigDecimal("1234567.89")));
+            dataService.saveEntriesForDate("Jens", LocalDate.now(), entries.values());
+
             page.reload();
             waitForVaadin();
 
@@ -205,7 +232,7 @@ class UC001EnterTransactionIT extends AbstractBasePlaywrightIT {
             waitForVaadin();
 
             GridElement grid = GridElement.get(page);
-            Optional<GridElement.CellElement> amountCell = grid.findCell(0, "Betrag");
+            Optional<GridElement.CellElement> amountCell = grid.findCell(0, "Gesamt");
             assertThat(amountCell.isPresent()).isTrue();
             com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat(amountCell.get().getCellContentLocator()).hasText("1.234.567,89 €");
         }

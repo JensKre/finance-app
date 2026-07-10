@@ -11,8 +11,9 @@ import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
-import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.Tabs;
 import com.vaadin.flow.component.textfield.BigDecimalField;
@@ -34,21 +35,23 @@ class UC001EnterTransactionTest extends SpringBrowserlessTest {
 
     @BeforeEach
     void setUp() {
-        // Ensure a clean state or setup if necessary.
-        // H2 in-memory DB is used, preloaded with Flyway seed data (Jens, Annika, etc.).
     }
 
     @AfterEach
     void tearDown() {
-        // Remove any transactions created during tests
-        List<DataService.TransactionDto> jensTxs = dataService.getTransactions("Jens");
-        for (DataService.TransactionDto tx : jensTxs) {
-            dataService.deleteTransaction(tx.id());
+        // Clean up entries created during tests
+        List<LocalDate> dates = List.of(LocalDate.now(), LocalDate.of(2026, 7, 6));
+        for (LocalDate date : dates) {
+            dataService.deleteEntriesForDate("Jens", date);
+            dataService.deleteEntriesForDate("Annika", date);
         }
-        List<DataService.TransactionDto> annikaTxs = dataService.getTransactions("Annika");
-        for (DataService.TransactionDto tx : annikaTxs) {
-            dataService.deleteTransaction(tx.id());
-        }
+    }
+
+    private <T extends Component> T getVisible(com.vaadin.browserless.ComponentQuery<T> query) {
+        return query.all().stream()
+                .filter(Component::isVisible)
+                .findFirst()
+                .orElseThrow(() -> new java.util.NoSuchElementException("No visible component found"));
     }
 
     @Test
@@ -61,38 +64,33 @@ class UC001EnterTransactionTest extends SpringBrowserlessTest {
         Tab jensTab = $(Tab.class).withText("Jens").single();
         tabs.setSelectedTab(jensTab);
 
-        // Get Jens's layout container to scope queries
-        Component jensLayout = $(H2.class).withText("Jens's Finanzverwaltung").single().getParent().orElseThrow();
+        // Get visible DatePicker
+        DatePicker dp = getVisible($(DatePicker.class).withCaption("Datum"));
+        test(dp).setValue(LocalDate.of(2026, 7, 6));
 
-        // 2. Locate components
-        BigDecimalField amountField = $(BigDecimalField.class, jensLayout).single();
-        ComboBox<String> instCombo = $(ComboBox.class, jensLayout).withCaption("Institut").single();
-        ComboBox<String> catCombo = $(ComboBox.class, jensLayout).withCaption("Kategorie").single();
-        DatePicker datePicker = $(DatePicker.class, jensLayout).withCaption("Datum").single();
-        Button submitBtn = $(Button.class, jensLayout).withText("Hinzufügen").single();
-        Grid<DataService.TransactionDto> grid = $(Grid.class, jensLayout).single();
+        // Locate the field for Trade Republic
+        BigDecimalField amountField = getVisible($(BigDecimalField.class).withAttribute("data-inst", "Trade Republic"));
+        Component row = amountField.getParent().orElseThrow();
+        ComboBox<String> categoryCombo = $(ComboBox.class, row).single();
 
-        // 3. Fill in details
         test(amountField).setValue(new BigDecimal("1250.50"));
-        test(instCombo).selectItem("Trade Republic");
-        test(catCombo).selectItem("ETF");
-        test(datePicker).setValue(LocalDate.of(2026, 7, 6));
+        test(categoryCombo).selectItem("ETF");
 
-        // 4. Submit
-        test(submitBtn).click();
+        // Locate the visible save button
+        Button saveBtn = getVisible($(Button.class).withText("Speichern"));
+        test(saveBtn).click();
 
-        // 5. Verify success notification
+        // Verify success notification
         assertThat($(Notification.class).exists()).isTrue();
         Notification notification = $(Notification.class).single();
-        assertThat(test(notification).getText()).isEqualTo("Eintrag erfolgreich hinzugefügt!");
+        assertThat(test(notification).getText()).isEqualTo("Einträge erfolgreich gespeichert!");
 
-        // 6. Verify entry was added to the grid
-        assertThat(test(grid).size()).isEqualTo(1);
-        DataService.TransactionDto transaction = test(grid).getRow(0);
-        assertThat(transaction.amount()).isEqualByComparingTo("1250.50");
-        assertThat(transaction.institute()).isEqualTo("Trade Republic");
-        assertThat(transaction.category()).isEqualTo("ETF");
-        assertThat(transaction.date()).isEqualTo(LocalDate.of(2026, 7, 6));
+        // Verify the visible date summary grid
+        Grid<DataService.DateSummaryDto> grid = getVisible($(Grid.class).withCondition(g -> g.getDataProvider() != null));
+        assertThat(test(grid).size()).isGreaterThanOrEqualTo(1);
+        DataService.DateSummaryDto summary = test(grid).getRow(0);
+        assertThat(summary.date()).isEqualTo(LocalDate.of(2026, 7, 6));
+        assertThat(summary.totalAmount()).isEqualByComparingTo("1250.50");
     }
 
     @Test
@@ -105,23 +103,30 @@ class UC001EnterTransactionTest extends SpringBrowserlessTest {
         Tab annikaTab = $(Tab.class).withText("Annika").single();
         tabs.setSelectedTab(annikaTab);
 
-        Component annikaLayout = $(H2.class).withText("Annika's Finanzverwaltung").single().getParent().orElseThrow();
-        Button submitBtn = $(Button.class, annikaLayout).withText("Hinzufügen").single();
+        // Enter amount without category for Sparkasse
+        BigDecimalField amountField = getVisible($(BigDecimalField.class).withAttribute("data-inst", "Sparkasse"));
+        Component row = amountField.getParent().orElseThrow();
+        ComboBox<String> categoryCombo = $(ComboBox.class, row).single();
 
-        // Submit immediately with empty fields
-        test(submitBtn).click();
+        test(amountField).setValue(new BigDecimal("500.00"));
+        categoryCombo.setValue(null); // Clear category using Java API directly
+
+        Button saveBtn = getVisible($(Button.class).withText("Speichern"));
+        test(saveBtn).click();
 
         // Verify error notification
         assertThat($(Notification.class).exists()).isTrue();
         Notification notification = $(Notification.class).single();
-        assertThat(test(notification).getText()).isEqualTo("Bitte fülle alle Felder aus!");
+        assertThat(test(notification).getText()).isEqualTo("Bitte Kategorie für Sparkasse auswählen!");
     }
 
     @Test
-    @UseCase(id = "UC-001", scenario = "A2: Delete Transaction")
+    @UseCase(id = "UC-001", scenario = "A2: Modify/Delete Existing Date Entries")
     void delete_transaction_confirms_and_deletes() {
-        // Pre-populate a transaction
-        dataService.addTransaction("Jens", "Sparkasse", "Girokonto", new BigDecimal("500.00"), LocalDate.now());
+        // Pre-populate an entry
+        java.util.Map<String, DataService.DateEntryDto> entries = new java.util.HashMap<>();
+        entries.put("Sparkasse", new DataService.DateEntryDto("Sparkasse", "Girokonto", new BigDecimal("500.00")));
+        dataService.saveEntriesForDate("Jens", LocalDate.now(), entries.values());
 
         MainView mainView = navigate(MainView.class);
 
@@ -130,15 +135,12 @@ class UC001EnterTransactionTest extends SpringBrowserlessTest {
         Tab jensTab = $(Tab.class).withText("Jens").single();
         tabs.setSelectedTab(jensTab);
 
-        Component jensLayout = $(H2.class).withText("Jens's Finanzverwaltung").single().getParent().orElseThrow();
-        Grid<DataService.TransactionDto> grid = $(Grid.class, jensLayout).single();
-
-        // Check size and materialize the first row
+        Grid<DataService.DateSummaryDto> grid = getVisible($(Grid.class).withCondition(g -> g.getDataProvider() != null));
         int initialSize = test(grid).size();
         assertThat(initialSize).isGreaterThanOrEqualTo(1);
 
-        // Click delete button in row 0, col 4
-        Button deleteBtn = (Button) test(grid).getCellComponent(0, 4);
+        // Click delete button in the first row, last column
+        Button deleteBtn = (Button) test(grid).getCellComponent(0, 2);
         test(deleteBtn).click();
 
         // Verify confirm dialog is open
@@ -156,8 +158,10 @@ class UC001EnterTransactionTest extends SpringBrowserlessTest {
     @Test
     @UseCase(id = "UC-001", scenario = "A3: Cancel Deletion")
     void cancel_deletion_does_not_delete() {
-        // Pre-populate a transaction
-        dataService.addTransaction("Jens", "Sparkasse", "Girokonto", new BigDecimal("500.00"), LocalDate.now());
+        // Pre-populate an entry
+        java.util.Map<String, DataService.DateEntryDto> entries = new java.util.HashMap<>();
+        entries.put("Sparkasse", new DataService.DateEntryDto("Sparkasse", "Girokonto", new BigDecimal("500.00")));
+        dataService.saveEntriesForDate("Jens", LocalDate.now(), entries.values());
 
         MainView mainView = navigate(MainView.class);
 
@@ -165,14 +169,11 @@ class UC001EnterTransactionTest extends SpringBrowserlessTest {
         Tab jensTab = $(Tab.class).withText("Jens").single();
         tabs.setSelectedTab(jensTab);
 
-        Component jensLayout = $(H2.class).withText("Jens's Finanzverwaltung").single().getParent().orElseThrow();
-        Grid<DataService.TransactionDto> grid = $(Grid.class, jensLayout).single();
-
+        Grid<DataService.DateSummaryDto> grid = getVisible($(Grid.class).withCondition(g -> g.getDataProvider() != null));
         int initialSize = test(grid).size();
         assertThat(initialSize).isGreaterThanOrEqualTo(1);
 
-        // Click delete button in row 0, col 4
-        Button deleteBtn = (Button) test(grid).getCellComponent(0, 4);
+        Button deleteBtn = (Button) test(grid).getCellComponent(0, 2);
         test(deleteBtn).click();
 
         Dialog dialog = $(Dialog.class).single();
@@ -186,9 +187,12 @@ class UC001EnterTransactionTest extends SpringBrowserlessTest {
     }
 
     @Test
-    @UseCase(id = "UC-001", scenario = "Main Success Scenario", businessRules = {"BR-002"})
+    @UseCase(id = "UC-001", scenario = "Main Success Scenario", businessRules = {"BR-007"})
     void currency_formatting_follows_german_locale() {
-        dataService.addTransaction("Jens", "Binance", "Krypto", new BigDecimal("1234567.89"), LocalDate.now());
+        // Pre-populate a large entry
+        java.util.Map<String, DataService.DateEntryDto> entries = new java.util.HashMap<>();
+        entries.put("Binance", new DataService.DateEntryDto("Binance", "Krypto", new BigDecimal("1234567.89")));
+        dataService.saveEntriesForDate("Jens", LocalDate.now(), entries.values());
 
         MainView mainView = navigate(MainView.class);
 
@@ -196,11 +200,10 @@ class UC001EnterTransactionTest extends SpringBrowserlessTest {
         Tab jensTab = $(Tab.class).withText("Jens").single();
         tabs.setSelectedTab(jensTab);
 
-        Component jensLayout = $(H2.class).withText("Jens's Finanzverwaltung").single().getParent().orElseThrow();
-        Grid<DataService.TransactionDto> grid = $(Grid.class, jensLayout).single();
+        Grid<DataService.DateSummaryDto> grid = getVisible($(Grid.class).withCondition(g -> g.getDataProvider() != null));
 
-        // Col index 3 is Betrag/Amount
-        String amountText = test(grid).getCellText(0, 3);
+        // Col index 1 is "Gesamt"
+        String amountText = test(grid).getCellText(0, 1);
         assertThat(amountText).isEqualTo("1.234.567,89 €");
     }
 }
