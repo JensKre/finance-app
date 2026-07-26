@@ -11,7 +11,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.vaadin.addons.dramafinder.AbstractBasePlaywrightIT;
-import org.vaadin.addons.dramafinder.element.GridElement;
 import org.vaadin.addons.dramafinder.element.TabElement;
 
 import com.example.financeapp.usecase.UseCase;
@@ -54,8 +53,8 @@ class UC004ViewJointDashboardIT extends AbstractBasePlaywrightIT {
     class MainSuccess {
 
         @Test
-        @UseCase(id = "UC-004")
-        @DisplayName("Joint dashboard displays correct wealth cards and recent activities")
+        @UseCase(id = "UC-004", businessRules = {"BR-004", "BR-005", "BR-006"})
+        @DisplayName("Joint dashboard displays correct wealth card, timeline chart, and category pie chart")
         void joint_dashboard_displays_correct_wealth_aggregations() {
             // Seed transactions
             dataService.addTransaction("Jens", "Sparkasse", "Girokonto", new BigDecimal("1500.50"), LocalDate.now());
@@ -67,19 +66,19 @@ class UC004ViewJointDashboardIT extends AbstractBasePlaywrightIT {
             dashboardTab.click();
             waitForVaadin();
 
-            // Verify wealth cards
+            // Verify wealth card (BR-004)
             com.microsoft.playwright.Locator gesamtCard = page.locator("div:has(> h3:has-text(\"Gesamtvermögen\"))");
             com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat(gesamtCard).containsText("4.001,25 €");
 
-            com.microsoft.playwright.Locator jensCard = page.locator("div:has(> h3:has-text(\"Jens\"))");
-            com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat(jensCard).containsText("1.500,50 €");
+            // Verify wealth timeline trend chart (BR-005)
+            com.microsoft.playwright.Locator trendChart = page.locator("#wealth-trend-chart");
+            com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat(trendChart).isVisible();
+            com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat(trendChart).containsText("Vermögensverlauf über die Zeit");
 
-            com.microsoft.playwright.Locator annikaCard = page.locator("div:has(> h3:has-text(\"Annika\"))");
-            com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat(annikaCard).containsText("2.500,75 €");
-
-            // Verify combined transactions grid
-            GridElement combinedGrid = GridElement.get(page.locator("body"));
-            assertThat(combinedGrid.getTotalRowCount()).isEqualTo(2);
+            // Verify category distribution pie chart (BR-006)
+            com.microsoft.playwright.Locator pieChart = page.locator("#category-pie-chart-card");
+            com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat(pieChart).isVisible();
+            com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat(pieChart).containsText("Kategorien-Verteilung");
 
             // No warning is present
             assertThat(page.locator("#no-data-message").count()).isEqualTo(0);
@@ -107,11 +106,10 @@ class UC004ViewJointDashboardIT extends AbstractBasePlaywrightIT {
             com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat(noDataMessage)
                     .hasText("Bitte tragen Sie Ihre erste Transaktion ein, um Daten auf dem Dashboard anzuzeigen.");
 
-            // Wealth cards and grids must NOT be present
+            // Wealth cards, trend chart, and pie chart must NOT be present
             assertThat(page.locator("div:has(> h3:has-text(\"Gesamtvermögen\"))").count()).isEqualTo(0);
-            assertThat(page.locator("div:has(> h3:has-text(\"Jens\"))").count()).isEqualTo(0);
-            assertThat(page.locator("div:has(> h3:has-text(\"Annika\"))").count()).isEqualTo(0);
-            assertThat(page.locator("vaadin-grid").count()).isEqualTo(0);
+            assertThat(page.locator("#wealth-trend-chart").count()).isEqualTo(0);
+            assertThat(page.locator("#category-pie-chart-card").count()).isEqualTo(0);
         }
     }
 }

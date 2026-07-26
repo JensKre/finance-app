@@ -51,8 +51,8 @@ class UC004ViewJointDashboardTest extends SpringBrowserlessTest {
     class MainSuccess {
 
         @Test
-        @UseCase(id = "UC-004")
-        @DisplayName("Joint dashboard displays correct aggregated wealth and transaction grid")
+        @UseCase(id = "UC-004", businessRules = {"BR-004", "BR-005", "BR-006"})
+        @DisplayName("Joint dashboard displays correct aggregated wealth, timeline chart, and category distribution pie chart")
         void joint_dashboard_displays_correct_aggregations() {
             // Seed transactions for Jens and Annika
             dataService.addTransaction("Jens", "Sparkasse", "Girokonto", new BigDecimal("1500.50"), LocalDate.now());
@@ -66,16 +66,21 @@ class UC004ViewJointDashboardTest extends SpringBrowserlessTest {
             Tab dashboardTab = $(Tab.class).withText("Dashboard").single();
             tabs.setSelectedTab(dashboardTab);
 
-            // Verify wealth card
+            // Verify wealth card (BR-004)
             Component gesamtTitle = $(H3.class).withText("Gesamtvermögen").single();
             Div gesamtCard = (Div) gesamtTitle.getParent().orElseThrow();
             Paragraph gesamtValue = $(Paragraph.class, gesamtCard).single();
             assertThat(gesamtValue.getText()).isEqualTo("4.001,25 €");
 
-            // Verify wealth trend chart exists
+            // Verify wealth trend chart exists (BR-005)
             Div chartCard = $(Div.class).withId("wealth-trend-chart").single();
             assertThat(chartCard).isNotNull();
             assertThat($(H3.class, chartCard).withText("Vermögensverlauf über die Zeit").exists()).isTrue();
+
+            // Verify category pie chart card exists (BR-006)
+            Div pieCard = $(Div.class).withId("category-pie-chart-card").single();
+            assertThat(pieCard).isNotNull();
+            assertThat($(H3.class, pieCard).withTextContaining("Kategorien-Verteilung").exists()).isTrue();
 
             // No A1 warning is shown
             assertThat($(Div.class).withId("no-data-message").exists()).isFalse();

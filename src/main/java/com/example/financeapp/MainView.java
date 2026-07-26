@@ -142,7 +142,201 @@ public class MainView extends VerticalLayout {
             // Wealth timeline chart over time (UC-004)
             List<DataService.DateSummaryDto> chronologicalSummaries = service.getChronologicalDateSummaries(null);
             dashboardContainer.add(createWealthTrendChart(chronologicalSummaries));
+
+            // Category distribution pie chart for latest snapshot date (UC-004)
+            LocalDate latestDate = service.getLatestTransactionDate();
+            if (latestDate != null) {
+                List<DataService.CategoryShareDto> categoryShares = service.getCategorySharesForDate(latestDate);
+                dashboardContainer.add(createCategoryPieChart(latestDate, categoryShares));
+            }
         }
+    }
+
+    private Component createCategoryPieChart(LocalDate date, List<DataService.CategoryShareDto> shares) {
+        if (shares == null || shares.isEmpty()) {
+            return new Div();
+        }
+
+        Div card = new Div();
+        card.setId("category-pie-chart-card");
+        card.getStyle()
+                .set("margin-top", "32px")
+                .set("margin-bottom", "32px")
+                .set("padding", "24px")
+                .set("border-radius", "16px")
+                .set("background", "var(--lumo-base-color)")
+                .set("box-shadow", "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)")
+                .set("border", "1px solid var(--lumo-contrast-10pct)")
+                .set("max-width", "900px")
+                .set("width", "100%");
+
+        String formattedDate = date.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"));
+        H3 title = new H3("Kategorien-Verteilung (Stand: " + formattedDate + ")");
+        title.getStyle().set("margin-top", "0").set("margin-bottom", "24px");
+        card.add(title);
+
+        BigDecimal grandTotal = shares.stream()
+                .map(DataService.CategoryShareDto::totalAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        if (grandTotal.compareTo(BigDecimal.ZERO) <= 0) {
+            return card;
+        }
+
+        // Color palette for slices
+        String[] colors = {
+            "#6366f1", // Indigo
+            "#10b981", // Emerald
+            "#f59e0b", // Amber
+            "#ec4899", // Pink
+            "#8b5cf6", // Purple
+            "#06b6d4", // Cyan
+            "#3b82f6", // Blue
+            "#f97316", // Orange
+            "#14b8a6", // Teal
+            "#eab308"  // Yellow
+        };
+
+        Div flexLayout = new Div();
+        flexLayout.getStyle()
+                .set("display", "flex")
+                .set("flex-wrap", "wrap")
+                .set("align-items", "center")
+                .set("justify-content", "space-around")
+                .set("gap", "32px");
+
+        int svgSize = 280;
+        int cx = 140;
+        int cy = 140;
+        int outerRadius = 110;
+        int innerRadius = 55;
+
+        String defaultTitle = formatCompactAmount(grandTotal);
+        String defaultSub = "Gesamt";
+
+        StringBuilder svg = new StringBuilder();
+        svg.append(String.format("<svg viewBox=\"0 0 %d %d\" style=\"width: %dpx; height: %dpx; font-family: var(--lumo-font-family);\">", svgSize, svgSize, svgSize, svgSize));
+
+        double currentAngle = -Math.PI / 2;
+
+        for (int i = 0; i < shares.size(); i++) {
+            DataService.CategoryShareDto share = shares.get(i);
+            double value = share.totalAmount().doubleValue();
+            double fraction = value / grandTotal.doubleValue();
+            double sliceAngle = fraction * 2 * Math.PI;
+
+            double nextAngle = currentAngle + sliceAngle;
+            String color = colors[i % colors.length];
+
+            double x1 = cx + outerRadius * Math.cos(currentAngle);
+            double y1 = cy + outerRadius * Math.sin(currentAngle);
+            double x2 = cx + outerRadius * Math.cos(nextAngle);
+            double y2 = cy + outerRadius * Math.sin(nextAngle);
+
+            double x3 = cx + innerRadius * Math.cos(nextAngle);
+            double y3 = cy + innerRadius * Math.sin(nextAngle);
+            double x4 = cx + innerRadius * Math.cos(currentAngle);
+            double y4 = cy + innerRadius * Math.sin(currentAngle);
+
+            int largeArcFlag = sliceAngle > Math.PI ? 1 : 0;
+
+            String pathData = String.format(java.util.Locale.US,
+                    "M %.2f,%.2f A %d,%d 0 %d,1 %.2f,%.2f L %.2f,%.2f A %d,%d 0 %d,0 %.2f,%.2f Z",
+                    x1, y1, outerRadius, outerRadius, largeArcFlag, x2, y2,
+                    x3, y3, innerRadius, innerRadius, largeArcFlag, x4, y4);
+
+            double percentage = fraction * 100.0;
+            String catName = share.categoryName().replace("'", "\\'");
+            String catAmount = formatAmount(share.totalAmount()).replace("'", "\\'");
+            String catPct = String.format(java.util.Locale.GERMANY, "%.1f %%", percentage);
+
+            String onMouseOver = String.format(
+                "document.getElementById('donut-center-title').textContent='%s';" +
+                "document.getElementById('donut-center-sub').textContent='%s (%s)';" +
+                "this.style.opacity='0.85';",
+                catName, catAmount, catPct
+            );
+
+            String onMouseOut = String.format(
+                "document.getElementById('donut-center-title').textContent='%s';" +
+                "document.getElementById('donut-center-sub').textContent='%s';" +
+                "this.style.opacity='1.0';",
+                defaultTitle, defaultSub
+            );
+
+            String tooltip = String.format("%s: %s (%.1f %%)", share.categoryName(), formatAmount(share.totalAmount()), percentage);
+
+            svg.append(String.format(java.util.Locale.US,
+                "<path d=\"%s\" fill=\"%s\" stroke=\"var(--lumo-base-color)\" stroke-width=\"2\" style=\"cursor: pointer; transition: opacity 0.15s;\" onmouseover=\"%s\" onmouseout=\"%s\">",
+                pathData, color, onMouseOver, onMouseOut));
+            svg.append(String.format("<title>%s</title>", tooltip));
+            svg.append("</path>");
+
+            currentAngle = nextAngle;
+        }
+
+        svg.append(String.format("<text id=\"donut-center-title\" x=\"%d\" y=\"%d\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-weight=\"bold\" font-size=\"14\" fill=\"var(--lumo-primary-text-color)\">%s</text>",
+                cx, cy - 8, defaultTitle));
+        svg.append(String.format("<text id=\"donut-center-sub\" x=\"%d\" y=\"%d\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-size=\"11\" fill=\"var(--lumo-secondary-text-color)\">%s</text>",
+                cx, cy + 12, defaultSub));
+
+        svg.append("</svg>");
+
+        Div svgWrapper = new Div();
+        svgWrapper.getElement().setProperty("innerHTML", svg.toString());
+
+        Div legend = new Div();
+        legend.getStyle()
+                .set("display", "flex")
+                .set("flex-direction", "column")
+                .set("gap", "12px")
+                .set("min-width", "260px");
+
+        for (int i = 0; i < shares.size(); i++) {
+            DataService.CategoryShareDto share = shares.get(i);
+            String color = colors[i % colors.length];
+            double percentage = share.totalAmount().doubleValue() / grandTotal.doubleValue() * 100.0;
+
+            Div legendItem = new Div();
+            legendItem.getStyle()
+                    .set("display", "flex")
+                    .set("align-items", "center")
+                    .set("justify-content", "space-between")
+                    .set("font-size", "0.95rem");
+
+            Div leftGroup = new Div();
+            leftGroup.getStyle().set("display", "flex").set("align-items", "center").set("gap", "10px");
+
+            Div colorBadge = new Div();
+            colorBadge.getStyle()
+                    .set("width", "12px")
+                    .set("height", "12px")
+                    .set("border-radius", "50%")
+                    .set("background", color)
+                    .set("flex-shrink", "0");
+
+            Span nameSpan = new Span(share.categoryName());
+            nameSpan.getStyle().set("font-weight", "500");
+            leftGroup.add(colorBadge, nameSpan);
+
+            Div rightGroup = new Div();
+            rightGroup.getStyle().set("display", "flex").set("gap", "12px").set("align-items", "center");
+
+            Span amountSpan = new Span(formatAmount(share.totalAmount()));
+            amountSpan.getStyle().set("font-weight", "600");
+
+            Span pctSpan = new Span(String.format(java.util.Locale.GERMANY, "(%.1f %%)", percentage));
+            pctSpan.getStyle().set("color", "var(--lumo-secondary-text-color)").set("font-size", "0.85rem");
+
+            rightGroup.add(amountSpan, pctSpan);
+            legendItem.add(leftGroup, rightGroup);
+            legend.add(legendItem);
+        }
+
+        flexLayout.add(svgWrapper, legend);
+        card.add(flexLayout);
+
+        return card;
     }
 
     private Component createWealthTrendChart(List<DataService.DateSummaryDto> summaries) {
@@ -468,6 +662,8 @@ public class MainView extends VerticalLayout {
         categoryCombo.setWidth("150px");
         if (currentCategory != null) {
             categoryCombo.setValue(currentCategory);
+        } else if (referenceCategory != null) {
+            categoryCombo.setValue(referenceCategory);
         }
 
         row.add(nameLabel, referenceSpan, amountField, categoryCombo);

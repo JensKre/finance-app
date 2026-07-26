@@ -69,12 +69,26 @@ class UC001EnterTransactionIT extends AbstractBasePlaywrightIT {
     @DisplayName("Main Success Scenario")
     class MainSuccess {
 
+        @org.junit.jupiter.api.BeforeEach
+        void seedReferenceData() {
+            // Seed a reference entry so that Trade Republic gets ETF as pre-selected category
+            java.util.Map<String, DataService.DateEntryDto> refEntries = new java.util.HashMap<>();
+            refEntries.put("Trade Republic", new DataService.DateEntryDto("Trade Republic", "ETF", new java.math.BigDecimal("1000.00")));
+            dataService.saveEntriesForDate("Jens", LocalDate.of(2026, 1, 1), refEntries.values());
+        }
+
+        @org.junit.jupiter.api.AfterEach
+        void cleanReferenceData() {
+            dataService.deleteEntriesForDate("Jens", LocalDate.of(2026, 1, 1));
+        }
+
         @Test
         @UseCase(id = "UC-001", scenario = "Main Success Scenario")
         @DisplayName("Enter valid transaction updates grid and database")
         void main_success_scenario_enter_transaction() {
+            page.reload();
             waitForVaadin();
-            TabElement jensTab = TabElement.getTabByText(page.locator("body"), "Jens");
+            TabElement jensTab = TabElement.getTabByText(page.locator("body"), "Eingabe");
             jensTab.click();
             waitForVaadin();
 
@@ -85,10 +99,8 @@ class UC001EnterTransactionIT extends AbstractBasePlaywrightIT {
             BigDecimalFieldElement amountField = new BigDecimalFieldElement(
                     page.locator("vaadin-big-decimal-field[data-inst='Trade Republic']").first());
             amountField.setValue("1250,50");
-
-            ComboBoxElement categoryCombo = new ComboBoxElement(
-                    page.locator("vaadin-horizontal-layout:has(span:has-text('Trade Republic')) vaadin-combo-box").first());
-            categoryCombo.selectItem("ETF");
+            // The ComboBox is pre-filled with "ETF" from the reference entry seeded in @BeforeEach
+            waitForVaadin();
 
             ButtonElement submitBtn = ButtonElement.getByText(page, "Speichern");
             submitBtn.click();
@@ -117,7 +129,7 @@ class UC001EnterTransactionIT extends AbstractBasePlaywrightIT {
         @DisplayName("Validation fails when required fields are empty")
         void registration_fails_when_fields_are_empty() {
             waitForVaadin();
-            TabElement jensTab = TabElement.getTabByText(page.locator("body"), "Jens");
+            TabElement jensTab = TabElement.getTabByText(page.locator("body"), "Eingabe");
             jensTab.click();
             waitForVaadin();
 
@@ -126,7 +138,7 @@ class UC001EnterTransactionIT extends AbstractBasePlaywrightIT {
             amountField.setValue("500,00");
 
             ComboBoxElement categoryCombo = new ComboBoxElement(
-                    page.locator("vaadin-horizontal-layout:has(span:has-text('Sparkasse')) vaadin-combo-box").first());
+                    page.locator("vaadin-horizontal-layout:has(vaadin-big-decimal-field[data-inst='Sparkasse']) vaadin-combo-box").first());
             categoryCombo.getLocator().locator("input").fill("");
 
             ButtonElement submitBtn = ButtonElement.getByText(page, "Speichern");
@@ -149,7 +161,7 @@ class UC001EnterTransactionIT extends AbstractBasePlaywrightIT {
             page.reload();
             waitForVaadin();
 
-            TabElement jensTab = TabElement.getTabByText(page.locator("body"), "Jens");
+            TabElement jensTab = TabElement.getTabByText(page.locator("body"), "Eingabe");
             jensTab.click();
             waitForVaadin();
 
@@ -186,7 +198,7 @@ class UC001EnterTransactionIT extends AbstractBasePlaywrightIT {
             page.reload();
             waitForVaadin();
 
-            TabElement jensTab = TabElement.getTabByText(page.locator("body"), "Jens");
+            TabElement jensTab = TabElement.getTabByText(page.locator("body"), "Eingabe");
             jensTab.click();
             waitForVaadin();
 
@@ -227,7 +239,7 @@ class UC001EnterTransactionIT extends AbstractBasePlaywrightIT {
             page.reload();
             waitForVaadin();
 
-            TabElement jensTab = TabElement.getTabByText(page.locator("body"), "Jens");
+            TabElement jensTab = TabElement.getTabByText(page.locator("body"), "Eingabe");
             jensTab.click();
             waitForVaadin();
 

@@ -302,6 +302,23 @@ public class DataService {
                 .execute();
     }
 
+    public record CategoryShareDto(String categoryName, BigDecimal totalAmount) {}
+
+    public LocalDate getLatestTransactionDate() {
+        return create.select(max(TX_DATE)).from(TRANSACTION_ENTRY).fetchOne(max(TX_DATE));
+    }
+
+    public List<CategoryShareDto> getCategorySharesForDate(LocalDate date) {
+        if (date == null) return List.of();
+        return create.select(CAT_NAME, sum(TX_AMOUNT))
+                .from(TRANSACTION_ENTRY)
+                .join(CATEGORY).on(TX_CAT_ID.eq(CAT_ID))
+                .where(TX_DATE.eq(date))
+                .groupBy(CAT_NAME)
+                .orderBy(sum(TX_AMOUNT).desc())
+                .fetch(org.jooq.Records.mapping(CategoryShareDto::new));
+    }
+
     public BigDecimal getCurrentWealth(String username) {
         if (username != null) {
             return getLatestBalances(username).values().stream()

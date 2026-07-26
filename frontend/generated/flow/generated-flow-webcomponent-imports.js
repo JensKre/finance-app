@@ -5,8 +5,8 @@ import { injectGlobalCss } from 'Frontend/generated/jar-resources/theme-util.js'
 import { css, unsafeCSS, registerStyles } from '@vaadin/vaadin-themable-mixin';
 import $cssFromFile_0 from '@vaadin/vaadin-lumo-styles/lumo.css?inline';
 import '@vaadin/vertical-layout/src/vaadin-vertical-layout.js';
-import '@vaadin/field-highlighter/src/vaadin-field-highlighter.js';
 import '@vaadin/common-frontend/ConnectionIndicator.js';
+import '@vaadin/field-highlighter/src/vaadin-field-highlighter.js';
 import '@vaadin/accordion/src/vaadin-accordion.js';
 import '@vaadin/details/src/vaadin-details.js';
 import '@vaadin/accordion/src/vaadin-accordion-panel.js';
