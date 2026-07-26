@@ -171,25 +171,35 @@ public class DataService {
     }
 
     public List<DateSummaryDto> getDateSummaries(String username) {
-        return create.select(TX_DATE, sum(TX_AMOUNT))
+        var base = create.select(TX_DATE, sum(TX_AMOUNT))
                 .from(TRANSACTION_ENTRY)
-                .join(APP_USER).on(TX_USER_ID.eq(USER_ID))
-                .where(USERNAME.eq(username))
-                .groupBy(TX_DATE)
+                .join(APP_USER).on(TX_USER_ID.eq(USER_ID));
+        var query = (username != null) ? base.where(USERNAME.eq(username)) : base;
+        return query.groupBy(TX_DATE)
                 .orderBy(TX_DATE.desc())
-                .fetch(r -> new DateSummaryDto(r.get(TX_DATE), r.get(sum(TX_AMOUNT), BigDecimal.class)));
+                .fetch(org.jooq.Records.mapping(DateSummaryDto::new));
+    }
+
+    public List<DateSummaryDto> getChronologicalDateSummaries(String username) {
+        var base = create.select(TX_DATE, sum(TX_AMOUNT))
+                .from(TRANSACTION_ENTRY)
+                .join(APP_USER).on(TX_USER_ID.eq(USER_ID));
+        var query = (username != null) ? base.where(USERNAME.eq(username)) : base;
+        return query.groupBy(TX_DATE)
+                .orderBy(TX_DATE.asc())
+                .fetch(org.jooq.Records.mapping(DateSummaryDto::new));
     }
 
     public LastEntryDto getLastEntry(String username, String instituteName, LocalDate beforeOrOnDate) {
-        var record = create.select(TX_AMOUNT, CAT_NAME)
+        var base = create.select(TX_AMOUNT, CAT_NAME)
                 .from(TRANSACTION_ENTRY)
                 .join(APP_USER).on(TX_USER_ID.eq(USER_ID))
                 .join(INSTITUTE).on(TX_INST_ID.eq(INST_ID))
                 .join(CATEGORY).on(TX_CAT_ID.eq(CAT_ID))
-                .where(USERNAME.eq(username))
-                .and(INST_NAME.eq(instituteName))
-                .and(TX_DATE.lessOrEqual(beforeOrOnDate))
-                .orderBy(TX_DATE.desc(), TX_ID.desc())
+                .where(INST_NAME.eq(instituteName))
+                .and(TX_DATE.lessOrEqual(beforeOrOnDate));
+        var query = (username != null) ? base.and(USERNAME.eq(username)) : base;
+        var record = query.orderBy(TX_DATE.desc(), TX_ID.desc())
                 .limit(1)
                 .fetchOne();
         if (record == null) {
@@ -199,16 +209,16 @@ public class DataService {
     }
 
     public LastEntryDto getLastEntry(String username, String instituteName, String categoryName, LocalDate beforeOrOnDate) {
-        var record = create.select(TX_AMOUNT, CAT_NAME)
+        var base = create.select(TX_AMOUNT, CAT_NAME)
                 .from(TRANSACTION_ENTRY)
                 .join(APP_USER).on(TX_USER_ID.eq(USER_ID))
                 .join(INSTITUTE).on(TX_INST_ID.eq(INST_ID))
                 .join(CATEGORY).on(TX_CAT_ID.eq(CAT_ID))
-                .where(USERNAME.eq(username))
-                .and(INST_NAME.eq(instituteName))
+                .where(INST_NAME.eq(instituteName))
                 .and(CAT_NAME.eq(categoryName))
-                .and(TX_DATE.lessOrEqual(beforeOrOnDate))
-                .orderBy(TX_DATE.desc(), TX_ID.desc())
+                .and(TX_DATE.lessOrEqual(beforeOrOnDate));
+        var query = (username != null) ? base.and(USERNAME.eq(username)) : base;
+        var record = query.orderBy(TX_DATE.desc(), TX_ID.desc())
                 .limit(1)
                 .fetchOne();
         if (record == null) {
@@ -218,35 +228,43 @@ public class DataService {
     }
 
     public LocalDate getMostRecentEntryDateBefore(String username, LocalDate date) {
-        return create.select(TX_DATE)
+        var base = create.select(TX_DATE)
                 .from(TRANSACTION_ENTRY)
                 .join(APP_USER).on(TX_USER_ID.eq(USER_ID))
-                .where(USERNAME.eq(username))
-                .and(TX_DATE.lessThan(date))
-                .orderBy(TX_DATE.desc())
+                .where(TX_DATE.lessThan(date));
+        var query = (username != null) ? base.and(USERNAME.eq(username)) : base;
+        return query.orderBy(TX_DATE.desc())
                 .limit(1)
                 .fetchOne(TX_DATE);
     }
 
     public List<DateEntryDto> getEntriesForDate(String username, LocalDate date) {
-        return create.select(INST_NAME, CAT_NAME, TX_AMOUNT)
+        var base = create.select(INST_NAME, CAT_NAME, sum(TX_AMOUNT))
                 .from(TRANSACTION_ENTRY)
                 .join(APP_USER).on(TX_USER_ID.eq(USER_ID))
                 .join(INSTITUTE).on(TX_INST_ID.eq(INST_ID))
                 .join(CATEGORY).on(TX_CAT_ID.eq(CAT_ID))
-                .where(USERNAME.eq(username))
-                .and(TX_DATE.eq(date))
-                .fetch(r -> new DateEntryDto(r.get(INST_NAME), r.get(CAT_NAME), r.get(TX_AMOUNT)));
+                .where(TX_DATE.eq(date));
+        var query = (username != null) ? base.and(USERNAME.eq(username)) : base;
+        return query.groupBy(INST_NAME, CAT_NAME)
+                .fetch(r -> new DateEntryDto(r.get(INST_NAME), r.get(CAT_NAME), r.get(sum(TX_AMOUNT), BigDecimal.class)));
     }
 
     public void saveEntriesForDate(String username, LocalDate date, Collection<DateEntryDto> entries) {
-        Long userId = create.select(USER_ID).from(APP_USER).where(USERNAME.eq(username)).fetchOne(USER_ID);
+        String targetUser = (username != null) ? username : "Jens";
+        Long userId = create.select(USER_ID).from(APP_USER).where(USERNAME.eq(targetUser)).fetchOne(USER_ID);
         if (userId == null) return;
 
-        create.deleteFrom(TRANSACTION_ENTRY)
-                .where(TX_USER_ID.eq(userId))
-                .and(TX_DATE.eq(date))
-                .execute();
+        if (username != null) {
+            create.deleteFrom(TRANSACTION_ENTRY)
+                    .where(TX_USER_ID.eq(userId))
+                    .and(TX_DATE.eq(date))
+                    .execute();
+        } else {
+            create.deleteFrom(TRANSACTION_ENTRY)
+                    .where(TX_DATE.eq(date))
+                    .execute();
+        }
 
         for (var entry : entries) {
             if (entry.amount() == null) {
@@ -263,11 +281,24 @@ public class DataService {
     }
 
     public void deleteEntriesForDate(String username, LocalDate date) {
-        Long userId = create.select(USER_ID).from(APP_USER).where(USERNAME.eq(username)).fetchOne(USER_ID);
-        if (userId == null) return;
+        if (username != null) {
+            Long userId = create.select(USER_ID).from(APP_USER).where(USERNAME.eq(username)).fetchOne(USER_ID);
+            if (userId == null) return;
+            create.deleteFrom(TRANSACTION_ENTRY)
+                    .where(TX_USER_ID.eq(userId))
+                    .and(TX_DATE.eq(date))
+                    .execute();
+        } else {
+            create.deleteFrom(TRANSACTION_ENTRY)
+                    .where(TX_DATE.eq(date))
+                    .execute();
+        }
+    }
+
+    public void deleteAllTransactionsExceptDates(List<LocalDate> validDates) {
+        if (validDates == null || validDates.isEmpty()) return;
         create.deleteFrom(TRANSACTION_ENTRY)
-                .where(TX_USER_ID.eq(userId))
-                .and(TX_DATE.eq(date))
+                .where(TX_DATE.notIn(validDates))
                 .execute();
     }
 

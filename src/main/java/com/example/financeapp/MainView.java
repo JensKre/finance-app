@@ -27,6 +27,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,12 +44,9 @@ public class MainView extends VerticalLayout {
 
     // Elements to refresh across tabs
     private final Div dashboardContainer = new Div();
-    private final Grid<DataService.DateSummaryDto> jensDatesGrid = new Grid<>();
-    private final Grid<DataService.DateSummaryDto> annikaDatesGrid = new Grid<>();
-    private final DatePicker jensDatePicker = new DatePicker("Datum");
-    private final DatePicker annikaDatePicker = new DatePicker("Datum");
-    private final VerticalLayout jensFormRowsContainer = new VerticalLayout();
-    private final VerticalLayout annikaFormRowsContainer = new VerticalLayout();
+    private final Grid<DataService.DateSummaryDto> datesGrid = new Grid<>();
+    private final DatePicker datePicker = new DatePicker("Datum");
+    private final VerticalLayout formRowsContainer = new VerticalLayout();
 
     @Autowired
     public MainView(DataService service) {
@@ -69,19 +67,17 @@ public class MainView extends VerticalLayout {
 
         // Tab setup
         Tab dashboardTab = new Tab("Dashboard");
-        Tab jensTab = new Tab("Jens");
-        Tab annikaTab = new Tab("Annika");
+        Tab eingabeTab = new Tab("Eingabe");
         Tab forecastTab = new Tab("Prognose");
         Tab settingsTab = new Tab("Einstellungen");
 
-        tabs.add(dashboardTab, jensTab, annikaTab, forecastTab, settingsTab);
+        tabs.add(dashboardTab, eingabeTab, forecastTab, settingsTab);
         tabs.setWidth("100%");
         add(tabs);
 
         // Create component contents
         tabComponentMap.put(dashboardTab, createDashboardContent());
-        tabComponentMap.put(jensTab, createUserTabContent("Jens", jensDatesGrid, jensDatePicker, jensFormRowsContainer));
-        tabComponentMap.put(annikaTab, createUserTabContent("Annika", annikaDatesGrid, annikaDatePicker, annikaFormRowsContainer));
+        tabComponentMap.put(eingabeTab, createEingabeTabContent(null, datesGrid, datePicker, formRowsContainer));
         tabComponentMap.put(forecastTab, createForecastContent());
         tabComponentMap.put(settingsTab, createSettingsContent());
 
@@ -115,13 +111,11 @@ public class MainView extends VerticalLayout {
     }
 
     void refreshData() {
-        // Refresh grids
-        jensDatesGrid.setItems(service.getDateSummaries("Jens"));
-        annikaDatesGrid.setItems(service.getDateSummaries("Annika"));
+        // Refresh grid
+        datesGrid.setItems(service.getDateSummaries(null));
 
         // Rebuild active form rows
-        rebuildFormRows("Jens", jensDatePicker.getValue(), jensFormRowsContainer);
-        rebuildFormRows("Annika", annikaDatePicker.getValue(), annikaFormRowsContainer);
+        rebuildFormRows(null, datePicker.getValue(), formRowsContainer);
 
         // Refresh dashboard numbers
         dashboardContainer.removeAll();
@@ -136,35 +130,151 @@ public class MainView extends VerticalLayout {
                     .set("color", "var(--lumo-secondary-text-color)");
             dashboardContainer.add(noDataMessage);
         } else {
-            BigDecimal jensTotal = service.getCurrentWealth("Jens");
-            BigDecimal annikaTotal = service.getCurrentWealth("Annika");
-            BigDecimal combinedTotal = jensTotal.add(annikaTotal);
+            BigDecimal totalWealth = service.getCurrentWealth(null);
 
             Div cards = new Div();
             cards.getStyle().set("display", "flex").set("gap", "24px").set("justify-content", "center").set("flex-wrap", "wrap").set("margin-top", "24px");
 
-            cards.add(createCard("Gesamtvermögen", formatAmount(combinedTotal), "linear-gradient(135deg, rgba(99, 102, 241, 0.4) 0%, rgba(79, 70, 229, 0.4) 100%)"));
-            cards.add(createCard("Jens", formatAmount(jensTotal), "linear-gradient(135deg, rgba(16, 185, 129, 0.4) 0%, rgba(5, 150, 105, 0.4) 100%)"));
-            cards.add(createCard("Annika", formatAmount(annikaTotal), "linear-gradient(135deg, rgba(236, 72, 153, 0.4) 0%, rgba(219, 39, 119, 0.4) 100%)"));
+            cards.add(createCard("Gesamtvermögen", formatAmount(totalWealth), "linear-gradient(135deg, rgba(99, 102, 241, 0.4) 0%, rgba(79, 70, 229, 0.4) 100%)"));
 
             dashboardContainer.add(cards);
 
-            // Simple listing of transactions in Dashboard
-            Div details = new Div();
-            details.getStyle().set("margin-top", "30px").set("width", "100%").set("max-width", "800px");
-            details.add(new H3("Letzte Aktivitäten (Kombiniert)"));
+            // Wealth timeline chart over time (UC-004)
+            List<DataService.DateSummaryDto> chronologicalSummaries = service.getChronologicalDateSummaries(null);
+            dashboardContainer.add(createWealthTrendChart(chronologicalSummaries));
+        }
+    }
 
-            Grid<DataService.TransactionDto> combinedGrid = new Grid<>();
-            combinedGrid.addColumn(DataService.TransactionDto::username).setHeader("Person");
-            combinedGrid.addColumn(DataService.TransactionDto::date).setHeader("Datum");
-            combinedGrid.addColumn(DataService.TransactionDto::institute).setHeader("Institut");
-            combinedGrid.addColumn(DataService.TransactionDto::category).setHeader("Kategorie");
-            combinedGrid.addColumn(r -> formatAmount(r.amount())).setHeader("Betrag");
+    private Component createWealthTrendChart(List<DataService.DateSummaryDto> summaries) {
+        if (summaries == null || summaries.isEmpty()) {
+            return new Div();
+        }
 
-            combinedGrid.setItems(allTx);
-            combinedGrid.setAllRowsVisible(true);
-            details.add(combinedGrid);
-            dashboardContainer.add(details);
+        Div chartCard = new Div();
+        chartCard.setId("wealth-trend-chart");
+        chartCard.getStyle()
+                .set("margin-top", "32px")
+                .set("padding", "24px")
+                .set("border-radius", "16px")
+                .set("background", "var(--lumo-base-color)")
+                .set("box-shadow", "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)")
+                .set("border", "1px solid var(--lumo-contrast-10pct)")
+                .set("max-width", "900px")
+                .set("width", "100%");
+
+        H3 chartTitle = new H3("Vermögensverlauf über die Zeit");
+        chartTitle.getStyle().set("margin-top", "0").set("margin-bottom", "20px");
+        chartCard.add(chartTitle);
+
+        BigDecimal maxAmount = summaries.stream()
+                .map(DataService.DateSummaryDto::totalAmount)
+                .max(BigDecimal::compareTo)
+                .orElse(BigDecimal.ZERO);
+
+        double maxVal = maxAmount.doubleValue();
+        double stepSize = 100_000.0;
+        int maxStep = (int) Math.ceil(maxVal / stepSize);
+        if (maxStep < 1) maxStep = 1;
+        // add 1 headroom step so the top curve doesn't hit the top border
+        maxStep++;
+
+        double maxY = maxStep * stepSize;
+
+        int width = 850;
+        int height = 380;
+        int paddingLeft = 110;
+        int paddingRight = 40;
+        int paddingTop = 45;
+        int paddingBottom = 50;
+
+        int plotWidth = width - paddingLeft - paddingRight;
+        int plotHeight = height - paddingTop - paddingBottom;
+
+        int n = summaries.size();
+
+        record ChartPoint(double x, double y, LocalDate date, BigDecimal amount) {}
+        List<ChartPoint> points = new java.util.ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            double x = paddingLeft + (n > 1 ? (double) i / (n - 1) * plotWidth : plotWidth / 2.0);
+            double val = summaries.get(i).totalAmount().doubleValue();
+            double y = paddingTop + plotHeight - (val / maxY * plotHeight);
+            points.add(new ChartPoint(x, y, summaries.get(i).date(), summaries.get(i).totalAmount()));
+        }
+
+        StringBuilder svg = new StringBuilder();
+        svg.append(String.format("<svg viewBox=\"0 0 %d %d\" style=\"width: 100%%; height: auto; font-family: var(--lumo-font-family);\">", width, height));
+
+        // SVG Gradient definition
+        svg.append("<defs>")
+           .append("<linearGradient id=\"wealthGradient\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\">")
+           .append("<stop offset=\"0%\" stop-color=\"#6366f1\" stop-opacity=\"0.35\"/>")
+           .append("<stop offset=\"100%\" stop-color=\"#6366f1\" stop-opacity=\"0.02\"/>")
+           .append("</linearGradient>")
+           .append("</defs>");
+
+        // Horizontal grid lines and Y-axis labels in 100.000 € steps
+        for (int step = 0; step <= maxStep; step++) {
+            double labelVal = step * stepSize;
+            double y = paddingTop + plotHeight - (labelVal / maxY * plotHeight);
+            svg.append(String.format(java.util.Locale.US, "<line x1=\"%d\" y1=\"%.1f\" x2=\"%d\" y2=\"%.1f\" stroke=\"var(--lumo-contrast-10pct)\" stroke-dasharray=\"4,4\"/>",
+                    paddingLeft, y, width - paddingRight, y));
+            
+            String labelText = formatAmount(BigDecimal.valueOf(labelVal)).replace(",00", "");
+            svg.append(String.format(java.util.Locale.US, "<text x=\"%d\" y=\"%.1f\" fill=\"var(--lumo-secondary-text-color)\" font-size=\"11\" text-anchor=\"end\" dominant-baseline=\"middle\">%s</text>",
+                    paddingLeft - 12, y, labelText));
+        }
+
+        // Build SVG paths for line & filled gradient area
+        StringBuilder pathD = new StringBuilder();
+        StringBuilder areaD = new StringBuilder();
+
+        if (!points.isEmpty()) {
+            pathD.append(String.format(java.util.Locale.US, "M %.1f,%.1f", points.get(0).x, points.get(0).y));
+            areaD.append(String.format(java.util.Locale.US, "M %.1f,%.1f L %.1f,%.1f", points.get(0).x, (double) (paddingTop + plotHeight), points.get(0).x, points.get(0).y));
+
+            for (int i = 1; i < points.size(); i++) {
+                pathD.append(String.format(java.util.Locale.US, " L %.1f,%.1f", points.get(i).x, points.get(i).y));
+                areaD.append(String.format(java.util.Locale.US, " L %.1f,%.1f", points.get(i).x, points.get(i).y));
+            }
+
+            areaD.append(String.format(java.util.Locale.US, " L %.1f,%.1f Z", points.get(points.size() - 1).x, (double) (paddingTop + plotHeight)));
+        }
+
+        svg.append(String.format("<path d=\"%s\" fill=\"url(#wealthGradient)\" />", areaD.toString()));
+        svg.append(String.format("<path d=\"%s\" fill=\"none\" stroke=\"#6366f1\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />", pathD.toString()));
+
+        // Points and X-axis date labels
+        DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("dd.MM.yy");
+        for (int i = 0; i < points.size(); i++) {
+            ChartPoint p = points.get(i);
+            svg.append(String.format(java.util.Locale.US, "<circle cx=\"%.1f\" cy=\"%.1f\" r=\"5\" fill=\"#6366f1\" stroke=\"#ffffff\" stroke-width=\"2\">", p.x, p.y));
+            svg.append(String.format("<title>%s: %s</title>", p.date.format(dateFmt), formatAmount(p.amount)));
+            svg.append("</circle>");
+
+            if (n <= 12 || i % Math.max(1, n / 6) == 0 || i == n - 1) {
+                svg.append(String.format(java.util.Locale.US, "<text x=\"%.1f\" y=\"%d\" fill=\"var(--lumo-secondary-text-color)\" font-size=\"11\" text-anchor=\"middle\">%s</text>",
+                        p.x, height - 15, p.date.format(dateFmt)));
+            }
+        }
+
+        svg.append("</svg>");
+
+        Div svgContainer = new Div();
+        svgContainer.getElement().setProperty("innerHTML", svg.toString());
+        chartCard.add(svgContainer);
+
+        return chartCard;
+    }
+
+    private String formatCompactAmount(BigDecimal amount) {
+        if (amount == null) return "0 €";
+        double d = amount.doubleValue();
+        if (d >= 1_000_000) {
+            return String.format(java.util.Locale.GERMANY, "%.1f Mio €", d / 1_000_000);
+        } else if (d >= 10_000) {
+            return String.format(java.util.Locale.GERMANY, "%.0f T€", d / 1_000);
+        } else {
+            return String.format(java.util.Locale.GERMANY, "%.0f €", d);
         }
     }
 
@@ -191,7 +301,7 @@ public class MainView extends VerticalLayout {
         return dashboardContainer;
     }
 
-    private Component createUserTabContent(String username, Grid<DataService.DateSummaryDto> datesGrid, DatePicker datePicker, VerticalLayout formRowsContainer) {
+    private Component createEingabeTabContent(String username, Grid<DataService.DateSummaryDto> datesGrid, DatePicker datePicker, VerticalLayout formRowsContainer) {
         HorizontalLayout mainSplit = new HorizontalLayout();
         mainSplit.setSizeFull();
         mainSplit.setSpacing(true);

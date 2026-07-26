@@ -59,10 +59,10 @@ class UC001EnterTransactionTest extends SpringBrowserlessTest {
     void main_success_scenario_enter_transaction() {
         MainView mainView = navigate(MainView.class);
 
-        // 1. Select Jens tab
+        // 1. Select Eingabe tab
         Tabs tabs = $(Tabs.class).single();
-        Tab jensTab = $(Tab.class).withText("Jens").single();
-        tabs.setSelectedTab(jensTab);
+        Tab eingabeTab = $(Tab.class).withText("Eingabe").single();
+        tabs.setSelectedTab(eingabeTab);
 
         // Get visible DatePicker
         DatePicker dp = getVisible($(DatePicker.class).withCaption("Datum"));
@@ -88,8 +88,15 @@ class UC001EnterTransactionTest extends SpringBrowserlessTest {
         // Verify the visible date summary grid
         Grid<DataService.DateSummaryDto> grid = getVisible($(Grid.class).withCondition(g -> g.getDataProvider() != null));
         assertThat(test(grid).size()).isGreaterThanOrEqualTo(1);
-        DataService.DateSummaryDto summary = test(grid).getRow(0);
-        assertThat(summary.date()).isEqualTo(LocalDate.of(2026, 7, 6));
+        DataService.DateSummaryDto summary = null;
+        for (int i = 0; i < test(grid).size(); i++) {
+            DataService.DateSummaryDto item = test(grid).getRow(i);
+            if (item.date().equals(LocalDate.of(2026, 7, 6))) {
+                summary = item;
+                break;
+            }
+        }
+        assertThat(summary).isNotNull();
         assertThat(summary.totalAmount()).isEqualByComparingTo("1250.50");
     }
 
@@ -98,10 +105,10 @@ class UC001EnterTransactionTest extends SpringBrowserlessTest {
     void registration_fails_when_fields_are_empty() {
         MainView mainView = navigate(MainView.class);
 
-        // Select Annika tab
+        // Select Eingabe tab
         Tabs tabs = $(Tabs.class).single();
-        Tab annikaTab = $(Tab.class).withText("Annika").single();
-        tabs.setSelectedTab(annikaTab);
+        Tab eingabeTab = $(Tab.class).withText("Eingabe").single();
+        tabs.setSelectedTab(eingabeTab);
 
         // Enter amount without category for Sparkasse
         BigDecimalField amountField = getVisible($(BigDecimalField.class).withAttribute("data-inst", "Sparkasse"));
@@ -130,10 +137,10 @@ class UC001EnterTransactionTest extends SpringBrowserlessTest {
 
         MainView mainView = navigate(MainView.class);
 
-        // Select Jens tab
+        // Select Eingabe tab
         Tabs tabs = $(Tabs.class).single();
-        Tab jensTab = $(Tab.class).withText("Jens").single();
-        tabs.setSelectedTab(jensTab);
+        Tab eingabeTab = $(Tab.class).withText("Eingabe").single();
+        tabs.setSelectedTab(eingabeTab);
 
         Grid<DataService.DateSummaryDto> grid = getVisible($(Grid.class).withCondition(g -> g.getDataProvider() != null));
         int initialSize = test(grid).size();
@@ -166,8 +173,8 @@ class UC001EnterTransactionTest extends SpringBrowserlessTest {
         MainView mainView = navigate(MainView.class);
 
         Tabs tabs = $(Tabs.class).single();
-        Tab jensTab = $(Tab.class).withText("Jens").single();
-        tabs.setSelectedTab(jensTab);
+        Tab eingabeTab = $(Tab.class).withText("Eingabe").single();
+        tabs.setSelectedTab(eingabeTab);
 
         Grid<DataService.DateSummaryDto> grid = getVisible($(Grid.class).withCondition(g -> g.getDataProvider() != null));
         int initialSize = test(grid).size();
@@ -197,8 +204,8 @@ class UC001EnterTransactionTest extends SpringBrowserlessTest {
         MainView mainView = navigate(MainView.class);
 
         Tabs tabs = $(Tabs.class).single();
-        Tab jensTab = $(Tab.class).withText("Jens").single();
-        tabs.setSelectedTab(jensTab);
+        Tab eingabeTab = $(Tab.class).withText("Eingabe").single();
+        tabs.setSelectedTab(eingabeTab);
 
         Grid<DataService.DateSummaryDto> grid = getVisible($(Grid.class).withCondition(g -> g.getDataProvider() != null));
 

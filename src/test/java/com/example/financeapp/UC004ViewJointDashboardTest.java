@@ -66,25 +66,16 @@ class UC004ViewJointDashboardTest extends SpringBrowserlessTest {
             Tab dashboardTab = $(Tab.class).withText("Dashboard").single();
             tabs.setSelectedTab(dashboardTab);
 
-            // Verify wealth cards
+            // Verify wealth card
             Component gesamtTitle = $(H3.class).withText("Gesamtvermögen").single();
             Div gesamtCard = (Div) gesamtTitle.getParent().orElseThrow();
             Paragraph gesamtValue = $(Paragraph.class, gesamtCard).single();
             assertThat(gesamtValue.getText()).isEqualTo("4.001,25 €");
 
-            Component jensTitle = $(H3.class).withText("Jens").single();
-            Div jensCard = (Div) jensTitle.getParent().orElseThrow();
-            Paragraph jensValue = $(Paragraph.class, jensCard).single();
-            assertThat(jensValue.getText()).isEqualTo("1.500,50 €");
-
-            Component annikaTitle = $(H3.class).withText("Annika").single();
-            Div annikaCard = (Div) annikaTitle.getParent().orElseThrow();
-            Paragraph annikaValue = $(Paragraph.class, annikaCard).single();
-            assertThat(annikaValue.getText()).isEqualTo("2.500,75 €");
-
-            // Verify combined grid exists and contains both entries
-            Grid<DataService.TransactionDto> combinedGrid = $(Grid.class).single();
-            assertThat(test(combinedGrid).size()).isEqualTo(2);
+            // Verify wealth trend chart exists
+            Div chartCard = $(Div.class).withId("wealth-trend-chart").single();
+            assertThat(chartCard).isNotNull();
+            assertThat($(H3.class, chartCard).withText("Vermögensverlauf über die Zeit").exists()).isTrue();
 
             // No A1 warning is shown
             assertThat($(Div.class).withId("no-data-message").exists()).isFalse();
@@ -113,11 +104,9 @@ class UC004ViewJointDashboardTest extends SpringBrowserlessTest {
             Div noDataMessage = $(Div.class).withId("no-data-message").single();
             assertThat(noDataMessage.getText()).isEqualTo("Bitte tragen Sie Ihre erste Transaktion ein, um Daten auf dem Dashboard anzuzeigen.");
 
-            // Wealth cards and activities grid must NOT exist
+            // Wealth cards and trend chart must NOT exist
             assertThat($(H3.class).withText("Gesamtvermögen").exists()).isFalse();
-            assertThat($(H3.class).withText("Jens").exists()).isFalse();
-            assertThat($(H3.class).withText("Annika").exists()).isFalse();
-            assertThat($(Grid.class).exists()).isFalse();
+            assertThat($(Div.class).withId("wealth-trend-chart").exists()).isFalse();
         }
     }
 }
