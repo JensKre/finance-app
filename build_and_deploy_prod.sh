@@ -50,9 +50,17 @@ echo "🚀 Starte Couples Finance Tracker (Produktions-Modus)..."
 echo "📁 Datenbank: $DIR/financedb_prod.mv.db"
 echo "------------------------------------------"
 
-# Setup JDK from the project's local .jdk directory
-export JAVA_HOME=$(find "$DIR/../.jdk" -name "Home" -type d | head -n 1)
-export PATH="$JAVA_HOME/bin:$PATH"
+# Setup JDK from local .jdk directory or sibling/project directory
+if [ -d "$DIR/.jdk" ]; then
+    export JAVA_HOME=$(find "$DIR/.jdk" -name "Home" -type d | head -n 1)
+elif [ -d "$DIR/../.jdk" ]; then
+    export JAVA_HOME=$(find "$DIR/../.jdk" -name "Home" -type d | head -n 1)
+elif [ -d "$DIR/../finance-app/.jdk" ]; then
+    export JAVA_HOME=$(find "$DIR/../finance-app/.jdk" -name "Home" -type d | head -n 1)
+fi
+if [ -n "$JAVA_HOME" ]; then
+    export PATH="$JAVA_HOME/bin:$PATH"
+fi
 
 # Run executable JAR with production profile (enables persistent file DB)
 (sleep 6 && open "http://localhost:8080") &

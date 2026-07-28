@@ -35,6 +35,7 @@ CREATE TABLE transaction_entry (
 INSERT INTO app_user (username) VALUES ('Jens');
 INSERT INTO app_user (username) VALUES ('Annika');
 
+INSERT INTO institute (name) VALUES ('Platzhalter');
 INSERT INTO institute (name) VALUES ('Trade Republic');
 INSERT INTO institute (name) VALUES ('Sparkasse');
 INSERT INTO institute (name) VALUES ('Binance');

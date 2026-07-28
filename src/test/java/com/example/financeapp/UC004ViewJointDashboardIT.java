@@ -83,6 +83,30 @@ class UC004ViewJointDashboardIT extends AbstractBasePlaywrightIT {
             // No warning is present
             assertThat(page.locator("#no-data-message").count()).isEqualTo(0);
         }
+
+        @Test
+        @UseCase(id = "UC-004", businessRules = {"BR-006"})
+        @DisplayName("Category pie chart slice mouse hover dynamically updates center display in browser")
+        void pie_chart_slice_hover_updates_center_display() {
+            dataService.addTransaction("Jens", "Platzhalter", "Tagesgeld+Sparkonto+Girokonto", new BigDecimal("10000.00"), LocalDate.now());
+
+            page.navigate(getUrl());
+            waitForVaadin();
+            TabElement dashboardTab = TabElement.getTabByText(page.locator("body"), "Dashboard");
+            dashboardTab.click();
+            waitForVaadin();
+
+            com.microsoft.playwright.Locator pieCard = page.locator("#category-pie-chart-card");
+            com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat(pieCard).isVisible();
+            com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat(pieCard).containsText("Tagesgeld+Sparkonto+Girokonto");
+
+            com.microsoft.playwright.Locator pieSlice = page.locator("#category-pie-chart-card path").first();
+            pieSlice.dispatchEvent("mouseover");
+            page.waitForTimeout(200);
+
+            com.microsoft.playwright.Locator centerTitle = page.locator("#donut-center-title");
+            com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat(centerTitle).hasText("Tagesgeld+Sparkonto+Girokonto");
+        }
     }
 
     @Nested

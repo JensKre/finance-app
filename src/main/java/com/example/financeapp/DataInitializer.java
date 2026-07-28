@@ -70,56 +70,9 @@ public class DataInitializer implements CommandLineRunner {
                     continue;
                 }
 
-                // Map row item name to institute & category
-                String instituteName;
-                String categoryName;
-
-                switch (rawItemName) {
-                    case "Bargeld":
-                        instituteName = "Bargeld";
-                        categoryName = "Bargeld";
-                        break;
-                    case "Tagesgeld+Sparkonto+Girokonto":
-                        instituteName = "Tagesgeld+Sparkonto+Girokonto";
-                        categoryName = "Girokonto";
-                        break;
-                    case "Bausparvertrag":
-                        instituteName = "Bausparvertrag";
-                        categoryName = "Bausparvertrag";
-                        break;
-                    case "Aktien":
-                        instituteName = "Aktien";
-                        categoryName = "ETF";
-                        break;
-                    case "Krypto":
-                        instituteName = "Krypto";
-                        categoryName = "Krypto";
-                        break;
-                    case "Gold":
-                        instituteName = "Gold";
-                        categoryName = "Gold";
-                        break;
-                    case "Silber":
-                        instituteName = "Silber";
-                        categoryName = "Silber";
-                        break;
-                    case "Genussrechte Stihl":
-                        instituteName = "Stihl";
-                        categoryName = "Genussrechte";
-                        break;
-                    case "Steuervorauszahlung":
-                        instituteName = "Steuervorauszahlung";
-                        categoryName = "Steuern";
-                        break;
-                    case "Steuernachzahlung voraussichtlich":
-                        instituteName = "Steuernachzahlung voraussichtlich";
-                        categoryName = "Steuern";
-                        break;
-                    default:
-                        instituteName = rawItemName;
-                        categoryName = rawItemName;
-                        break;
-                }
+                // Map row item name to category & use "Platzhalter" for institute
+                String instituteName = "Platzhalter";
+                String categoryName = rawItemName;
 
                 // Ensure institute & category exist in DB
                 if (!service.instituteExists(instituteName)) {

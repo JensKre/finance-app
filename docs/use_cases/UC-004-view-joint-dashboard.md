@@ -26,9 +26,9 @@
      - Data points representing the sum of entries for each snapshot date.
    - An interactive category asset distribution pie chart positioned below the timeline chart, featuring:
      - A title indicating the date of the latest snapshot (e.g. `Kategorien-Verteilung (Stand: dd.MM.yyyy)`).
-     - Color-coded pie slices for each financial category (e.g. Girokonto, ETF, Krypto, Gold, Bausparvertrag).
-     - Interactive hover interaction: hovering over any pie slice dynamically displays the hovered category's name, Euro amount, and percentage share in the center of the chart (and via tooltip), reverting back to the total wealth display when the mouse leaves.
-     - A legend displaying category names, absolute amounts in Euros, and percentage shares.
+     - Color-coded pie slices for each configured financial category using exact category names as defined in application settings and transactions.
+     - Interactive hover interaction: hovering over any pie slice dynamically displays the hovered category's exact name, Euro amount, and percentage share in the center of the chart (and via tooltip), reverting back to the total wealth display when the mouse leaves.
+     - A legend displaying the exact configured category names, absolute amounts in Euros, and percentage shares.
 5. User views the current net worth, the timeline chart of wealth development over time, and interacts with the category distribution pie chart.
 
 ## Alternative Flows
@@ -45,7 +45,7 @@
 
 ### Success Postconditions
 
-- User views an accurate summary card of current joint net worth, a timeline chart with 100.000 € Y-axis increments, and an interactive category pie chart with mouse-hover category details for the latest snapshot date.
+- User views an accurate summary card of current joint net worth, a timeline chart with 100.000 € Y-axis increments, and an interactive category pie chart with mouse-hover category details for the latest snapshot date using exact defined category names.
 
 ### Failure Postconditions
 
@@ -60,5 +60,5 @@ Current total wealth is the sum of all recorded transaction balances for the mos
 The timeline chart plots the total net worth for each historical entry date chronologically on the X-axis. The Y-axis is scaled in uniform 100.000 € step increments with proper top padding so all labels remain fully visible.
 
 ### BR-006: Category Distribution Breakdown & Interactive Hover
-The category pie chart displays asset sums per category exclusively for the most recent available snapshot date, displaying the exact date in the header and calculating exact percentage shares per category. Hovering over a slice dynamically updates the center display to show the hovered category's name, amount, and percentage share.
+The category pie chart displays asset sums grouped by the exact category names defined in the application (matching the configured master categories in settings and transaction entries). The date of the snapshot is shown in the header, and exact percentage shares per category are calculated. Hovering over a slice dynamically updates the center display to show the exact category name, amount, and percentage share.
 

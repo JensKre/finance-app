@@ -69,9 +69,10 @@ public class MainView extends VerticalLayout {
         Tab dashboardTab = new Tab("Dashboard");
         Tab eingabeTab = new Tab("Eingabe");
         Tab forecastTab = new Tab("Prognose");
+        Tab csvImportTab = new Tab("CSV Import");
         Tab settingsTab = new Tab("Einstellungen");
 
-        tabs.add(dashboardTab, eingabeTab, forecastTab, settingsTab);
+        tabs.add(dashboardTab, eingabeTab, forecastTab, csvImportTab, settingsTab);
         tabs.setWidth("100%");
         add(tabs);
 
@@ -79,6 +80,7 @@ public class MainView extends VerticalLayout {
         tabComponentMap.put(dashboardTab, createDashboardContent());
         tabComponentMap.put(eingabeTab, createEingabeTabContent(null, datesGrid, datePicker, formRowsContainer));
         tabComponentMap.put(forecastTab, createForecastContent());
+        tabComponentMap.put(csvImportTab, createCsvImportContent());
         tabComponentMap.put(settingsTab, createSettingsContent());
 
         contentContainer.setSizeFull();
@@ -894,6 +896,104 @@ public class MainView extends VerticalLayout {
 
         lists.add(instLayout, catLayout);
         layout.add(lists);
+
+        return layout;
+    }
+
+    private Component createCsvImportContent() {
+        VerticalLayout layout = new VerticalLayout();
+        layout.setSizeFull();
+        layout.setSpacing(true);
+        layout.setPadding(true);
+
+        H2 header = new H2("Budget CSV Import");
+        layout.add(header);
+
+        // Top Metadata Header Card (BR-012)
+        Div metaCard = new Div();
+        metaCard.addClassName("glass-panel");
+        metaCard.getStyle()
+                .set("width", "100%")
+                .set("padding", "16px")
+                .set("border-radius", "12px")
+                .set("margin-bottom", "16px");
+
+        Span metaText = new Span();
+        metaText.getStyle().set("font-size", "1.1rem").set("font-weight", "500");
+
+        Runnable updateMetaDisplay = () -> {
+            DataService.ImportMetadataDto meta = service.getLatestImportMetadata();
+            if (meta != null && meta.filename() != null) {
+                String formattedTime = meta.uploadTimestamp() != null ?
+                        meta.uploadTimestamp().format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")) : "";
+                metaText.setText("Zuletzt hochgeladene Datei: " + meta.filename() + " (" + formattedTime + ")");
+            } else {
+                metaText.setText("Noch keine CSV-Datei hochgeladen.");
+            }
+        };
+        updateMetaDisplay.run();
+        metaCard.add(metaText);
+        layout.add(metaCard);
+
+        // Upload Component
+        com.vaadin.flow.component.upload.Upload upload = new com.vaadin.flow.component.upload.Upload();
+        com.vaadin.flow.component.upload.receivers.MemoryBuffer buffer = new com.vaadin.flow.component.upload.receivers.MemoryBuffer();
+        upload.setReceiver(buffer);
+        upload.setAcceptedFileTypes(".csv");
+        upload.setDropLabel(new Span("Budget CSV Datei hierher ziehen oder auswählen"));
+
+        Grid<DataService.BudgetTransactionDto> budgetGrid = new Grid<>();
+        budgetGrid.setSizeFull();
+        budgetGrid.addColumn(dto -> dto.date() != null ? dto.date().format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy")) : "").setHeader("Datum").setSortable(true);
+        budgetGrid.addColumn(DataService.BudgetTransactionDto::type).setHeader("Typ");
+        budgetGrid.addColumn(dto -> formatAmount(dto.amount())).setHeader("Betrag");
+        budgetGrid.addColumn(DataService.BudgetTransactionDto::category).setHeader("Kategorie");
+        budgetGrid.addColumn(DataService.BudgetTransactionDto::person).setHeader("Person");
+        budgetGrid.addColumn(DataService.BudgetTransactionDto::description).setHeader("Beschreibung");
+
+        Runnable refreshBudgetGrid = () -> budgetGrid.setItems(service.getRecentBudgetTransactions(100));
+        refreshBudgetGrid.run();
+
+        upload.addSucceededListener(event -> {
+            String filename = event.getFileName();
+            try (java.io.InputStream is = buffer.getInputStream();
+                 java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(is, java.nio.charset.StandardCharsets.UTF_8))) {
+                
+                List<String[]> csvRows = new java.util.ArrayList<>();
+                String line;
+                boolean firstLine = true;
+                while ((line = reader.readLine()) != null) {
+                    if (firstLine) {
+                        firstLine = false;
+                        continue; // Skip header row
+                    }
+                    if (line.trim().isEmpty()) continue;
+                    String[] parts = line.split(";");
+                    csvRows.add(parts);
+                }
+
+                DataService.CsvImportResult result = service.importBudgetCsvRows(filename, csvRows);
+                updateMetaDisplay.run();
+                refreshBudgetGrid.run();
+
+                Notification.show(String.format("Import abgeschlossen: %d neue Eintr%ss importiert, %d bestehende Eintr%ss übersprungen.",
+                        result.importedCount(), result.importedCount() == 1 ? "ag" : "äge",
+                        result.skippedCount(), result.skippedCount() == 1 ? "ag" : "äge"),
+                        4000, Notification.Position.TOP_CENTER)
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+
+            } catch (Exception ex) {
+                Notification.show("Fehler beim Importieren der CSV-Datei: " + ex.getMessage(), 4000, Notification.Position.TOP_CENTER)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+
+        Div uploadWrapper = new Div(upload);
+        uploadWrapper.getStyle().set("margin-bottom", "20px");
+        layout.add(uploadWrapper);
+
+        H3 previewHeader = new H3("Zuletzt importierte Daten (Vorschau max. 100 Einträge)");
+        layout.add(previewHeader, budgetGrid);
 
         return layout;
     }

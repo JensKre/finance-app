@@ -19,6 +19,7 @@ import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Paragraph;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.Tabs;
 
@@ -84,6 +85,30 @@ class UC004ViewJointDashboardTest extends SpringBrowserlessTest {
 
             // No A1 warning is shown
             assertThat($(Div.class).withId("no-data-message").exists()).isFalse();
+        }
+
+        @Test
+        @UseCase(id = "UC-004", businessRules = {"BR-006"})
+        @DisplayName("Category pie chart uses exact defined category names dynamically")
+        void category_pie_chart_uses_exact_configured_category_names() {
+            // Seed categories and transactions with custom category names and Platzhalter institute
+            dataService.addCategory("Tagesgeld+Sparkonto+Girokonto");
+            dataService.addCategory("Genussrechte Stihl");
+            dataService.addInstitute("Platzhalter");
+
+            dataService.addTransaction("Jens", "Platzhalter", "Tagesgeld+Sparkonto+Girokonto", new BigDecimal("10000.00"), LocalDate.now());
+            dataService.addTransaction("Jens", "Platzhalter", "Genussrechte Stihl", new BigDecimal("5000.00"), LocalDate.now());
+
+            navigate(MainView.class);
+            ((MainView) getCurrentView()).refreshData();
+
+            Div pieCard = $(Div.class).withId("category-pie-chart-card").single();
+            assertThat(pieCard).isNotNull();
+
+            // Verify that legend contains Spans with the exact category names
+            List<Span> categorySpans = $(Span.class, pieCard).all();
+            List<String> spanTexts = categorySpans.stream().map(Span::getText).toList();
+            assertThat(spanTexts).contains("Tagesgeld+Sparkonto+Girokonto", "Genussrechte Stihl");
         }
     }
 

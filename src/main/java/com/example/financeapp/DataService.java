@@ -40,6 +40,24 @@ public class DataService {
     private static final org.jooq.Field<BigDecimal> TX_AMOUNT = field(name("TRANSACTION_ENTRY", "AMOUNT"), BigDecimal.class);
     private static final org.jooq.Field<LocalDate> TX_DATE = field(name("TRANSACTION_ENTRY", "ENTRY_DATE"), LocalDate.class);
 
+    private static final org.jooq.Table<Record> BUDGET_CATEGORY = table("BUDGET_CATEGORY");
+    private static final org.jooq.Field<Long> BUDGET_CAT_ID = field(name("BUDGET_CATEGORY", "ID"), Long.class);
+    private static final org.jooq.Field<String> BUDGET_CAT_NAME = field(name("BUDGET_CATEGORY", "NAME"), String.class);
+
+    private static final org.jooq.Table<Record> BUDGET_TRANSACTION = table("BUDGET_TRANSACTION");
+    private static final org.jooq.Field<Long> BTX_ID = field(name("BUDGET_TRANSACTION", "ID"), Long.class);
+    private static final org.jooq.Field<LocalDate> BTX_DATE = field(name("BUDGET_TRANSACTION", "TX_DATE"), LocalDate.class);
+    private static final org.jooq.Field<String> BTX_TYPE = field(name("BUDGET_TRANSACTION", "TX_TYPE"), String.class);
+    private static final org.jooq.Field<BigDecimal> BTX_AMOUNT = field(name("BUDGET_TRANSACTION", "AMOUNT"), BigDecimal.class);
+    private static final org.jooq.Field<Long> BTX_CAT_ID = field(name("BUDGET_TRANSACTION", "CATEGORY_ID"), Long.class);
+    private static final org.jooq.Field<Long> BTX_USER_ID = field(name("BUDGET_TRANSACTION", "USER_ID"), Long.class);
+    private static final org.jooq.Field<String> BTX_DESC = field(name("BUDGET_TRANSACTION", "DESCRIPTION"), String.class);
+
+    private static final org.jooq.Table<Record> IMPORT_METADATA = table("IMPORT_METADATA");
+    private static final org.jooq.Field<Integer> META_ID = field(name("IMPORT_METADATA", "ID"), Integer.class);
+    private static final org.jooq.Field<String> META_FILENAME = field(name("IMPORT_METADATA", "LAST_FILENAME"), String.class);
+    private static final org.jooq.Field<java.time.LocalDateTime> META_TIMESTAMP = field(name("IMPORT_METADATA", "UPLOAD_TIMESTAMP"), java.time.LocalDateTime.class);
+
     // DTO Records
     public record UserDto(Long id, String username) {}
     public record InstituteDto(Long id, String name) {}
@@ -48,6 +66,8 @@ public class DataService {
     public record DateSummaryDto(LocalDate date, BigDecimal totalAmount) {}
     public record LastEntryDto(BigDecimal amount, String categoryName) {}
     public record DateEntryDto(String instituteName, String categoryName, BigDecimal amount) {}
+    public record BudgetTransactionDto(Long id, LocalDate date, String type, BigDecimal amount, String category, String person, String description) {}
+    public record ImportMetadataDto(String filename, java.time.LocalDateTime uploadTimestamp) {}
 
     public List<UserDto> getUsers() {
         return create.select(USER_ID, USERNAME)
@@ -320,24 +340,118 @@ public class DataService {
     }
 
     public BigDecimal getCurrentWealth(String username) {
-        if (username != null) {
-            return getLatestBalances(username).values().stream()
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-        } else {
-            return getLatestBalances("Jens").values().stream().reduce(BigDecimal.ZERO, BigDecimal::add)
-                    .add(getLatestBalances("Annika").values().stream().reduce(BigDecimal.ZERO, BigDecimal::add));
+        LocalDate latestDate = getLatestTransactionDate();
+        if (latestDate == null) {
+            return BigDecimal.ZERO;
         }
+        var base = create.select(sum(TX_AMOUNT))
+                .from(TRANSACTION_ENTRY)
+                .join(APP_USER).on(TX_USER_ID.eq(USER_ID))
+                .where(TX_DATE.eq(latestDate));
+        var query = (username != null) ? base.and(USERNAME.eq(username)) : base;
+        BigDecimal result = query.fetchOne(sum(TX_AMOUNT));
+        return result != null ? result : BigDecimal.ZERO;
     }
 
-    private Map<String, BigDecimal> getLatestBalances(String username) {
-        Map<String, BigDecimal> balances = new HashMap<>();
-        List<InstituteDto> institutes = getInstitutes();
-        for (var inst : institutes) {
-            LastEntryDto last = getLastEntry(username, inst.name(), LocalDate.now());
-            if (last != null && last.amount() != null) {
-                balances.put(inst.name(), last.amount());
+    // Budget CSV Import & Metadata methods (UC-007)
+    public ImportMetadataDto getLatestImportMetadata() {
+        return create.select(META_FILENAME, META_TIMESTAMP)
+                .from(IMPORT_METADATA)
+                .where(META_ID.eq(1))
+                .fetchOne(org.jooq.Records.mapping(ImportMetadataDto::new));
+    }
+
+    public void updateImportMetadata(String filename) {
+        create.insertInto(IMPORT_METADATA, META_ID, META_FILENAME, META_TIMESTAMP)
+                .values(1, filename, java.time.LocalDateTime.now())
+                .onDuplicateKeyUpdate()
+                .set(META_FILENAME, filename)
+                .set(META_TIMESTAMP, java.time.LocalDateTime.now())
+                .execute();
+    }
+
+    public Long getOrCreateBudgetCategory(String categoryName) {
+        Long id = create.select(BUDGET_CAT_ID).from(BUDGET_CATEGORY).where(BUDGET_CAT_NAME.eq(categoryName)).fetchOne(BUDGET_CAT_ID);
+        if (id != null) {
+            return id;
+        }
+        create.insertInto(BUDGET_CATEGORY, BUDGET_CAT_NAME)
+                .values(categoryName)
+                .execute();
+        return create.select(BUDGET_CAT_ID).from(BUDGET_CATEGORY).where(BUDGET_CAT_NAME.eq(categoryName)).fetchOne(BUDGET_CAT_ID);
+    }
+
+    public List<BudgetTransactionDto> getRecentBudgetTransactions(int limit) {
+        return create.select(BTX_ID, BTX_DATE, BTX_TYPE, BTX_AMOUNT, BUDGET_CAT_NAME, USERNAME, BTX_DESC)
+                .from(BUDGET_TRANSACTION)
+                .join(BUDGET_CATEGORY).on(BTX_CAT_ID.eq(BUDGET_CAT_ID))
+                .join(APP_USER).on(BTX_USER_ID.eq(USER_ID))
+                .orderBy(BTX_DATE.desc(), BTX_ID.desc())
+                .limit(limit)
+                .fetch(org.jooq.Records.mapping(BudgetTransactionDto::new));
+    }
+
+    public record CsvImportResult(int importedCount, int skippedCount) {}
+
+    public CsvImportResult importBudgetCsvRows(String filename, List<String[]> csvRows) {
+        int imported = 0;
+        int skipped = 0;
+
+        for (String[] row : csvRows) {
+            if (row.length < 6) continue;
+            String dateStr = row[0].trim();
+            String typeStr = row[1].trim();
+            String amountStr = row[2].trim();
+            String categoryStr = row[3].trim();
+            String personStr = row[4].trim();
+            String descStr = row[5].trim();
+
+            if (dateStr.isEmpty() || amountStr.isEmpty() || categoryStr.isEmpty()) continue;
+
+            LocalDate date;
+            try {
+                date = LocalDate.parse(dateStr, java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy"));
+            } catch (Exception e) {
+                continue;
+            }
+
+            BigDecimal amount;
+            try {
+                amount = new BigDecimal(amountStr.replace(",", ".")).setScale(2, java.math.RoundingMode.HALF_UP);
+            } catch (Exception e) {
+                continue;
+            }
+
+            Long userId = create.select(USER_ID).from(APP_USER).where(USERNAME.eq(personStr)).fetchOne(USER_ID);
+            if (userId == null) {
+                // Default to Jens if user not found
+                userId = create.select(USER_ID).from(APP_USER).where(USERNAME.eq("Jens")).fetchOne(USER_ID);
+            }
+
+            Long categoryId = getOrCreateBudgetCategory(categoryStr);
+
+            // Delta Check: Check if record already exists
+            boolean exists = create.fetchExists(
+                    create.selectOne()
+                            .from(BUDGET_TRANSACTION)
+                            .where(BTX_DATE.eq(date))
+                            .and(BTX_USER_ID.eq(userId))
+                            .and(BTX_CAT_ID.eq(categoryId))
+                            .and(BTX_AMOUNT.eq(amount))
+                            .and(BTX_DESC.eq(descStr))
+            );
+
+            if (exists) {
+                skipped++;
+            } else {
+                create.insertInto(BUDGET_TRANSACTION, BTX_DATE, BTX_TYPE, BTX_AMOUNT, BTX_CAT_ID, BTX_USER_ID, BTX_DESC)
+                        .values(date, typeStr, amount, categoryId, userId, descStr)
+                        .execute();
+                imported++;
             }
         }
-        return balances;
+
+        updateImportMetadata(filename);
+        return new CsvImportResult(imported, skipped);
     }
 }
