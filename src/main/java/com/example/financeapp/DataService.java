@@ -362,12 +362,17 @@ public class DataService {
     }
 
     public void updateImportMetadata(String filename) {
-        create.insertInto(IMPORT_METADATA, META_ID, META_FILENAME, META_TIMESTAMP)
-                .values(1, filename, java.time.LocalDateTime.now())
-                .onDuplicateKeyUpdate()
-                .set(META_FILENAME, filename)
-                .set(META_TIMESTAMP, java.time.LocalDateTime.now())
-                .execute();
+        create.deleteFrom(IMPORT_METADATA).where(META_ID.eq(1)).execute();
+        if (filename != null) {
+            create.insertInto(IMPORT_METADATA, META_ID, META_FILENAME, META_TIMESTAMP)
+                    .values(1, filename, java.time.LocalDateTime.now())
+                    .execute();
+        }
+    }
+
+    public void clearImportMetadataAndBudgetTransactions() {
+        create.deleteFrom(IMPORT_METADATA).execute();
+        create.deleteFrom(BUDGET_TRANSACTION).execute();
     }
 
     public Long getOrCreateBudgetCategory(String categoryName) {

@@ -931,7 +931,6 @@ public class MainView extends VerticalLayout {
                 metaText.setText("Noch keine CSV-Datei hochgeladen.");
             }
         };
-        updateMetaDisplay.run();
         metaCard.add(metaText);
         layout.add(metaCard);
 
@@ -952,6 +951,12 @@ public class MainView extends VerticalLayout {
         budgetGrid.addColumn(DataService.BudgetTransactionDto::description).setHeader("Beschreibung");
 
         Runnable refreshBudgetGrid = () -> budgetGrid.setItems(service.getRecentBudgetTransactions(100));
+
+        layout.addAttachListener(e -> {
+            updateMetaDisplay.run();
+            refreshBudgetGrid.run();
+        });
+        updateMetaDisplay.run();
         refreshBudgetGrid.run();
 
         upload.addSucceededListener(event -> {
