@@ -11,6 +11,7 @@ rectangle "Couples Finance Tracker" {
     usecase "UC-005\nForecast Wealth" as UC005
     usecase "UC-006\nExport & Import Backup Data" as UC006
     usecase "UC-007\nImport Budget CSV" as UC007
+    usecase "UC-008\nView Budget Analysis" as UC008
 }
 
 user --> UC001
@@ -20,5 +21,6 @@ user --> UC004
 user --> UC005
 user --> UC006
 user --> UC007
+user --> UC008
 
 @enduml

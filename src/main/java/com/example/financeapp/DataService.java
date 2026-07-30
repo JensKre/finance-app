@@ -323,6 +323,7 @@ public class DataService {
     }
 
     public record CategoryShareDto(String categoryName, BigDecimal totalAmount) {}
+    public record CategoryHistoricalShareDto(LocalDate date, String categoryName, double percentage, BigDecimal totalAmount) {}
 
     public LocalDate getLatestTransactionDate() {
         return create.select(max(TX_DATE)).from(TRANSACTION_ENTRY).fetchOne(max(TX_DATE));
@@ -337,6 +338,28 @@ public class DataService {
                 .groupBy(CAT_NAME)
                 .orderBy(sum(TX_AMOUNT).desc())
                 .fetch(org.jooq.Records.mapping(CategoryShareDto::new));
+    }
+
+    public List<CategoryHistoricalShareDto> getHistoricalCategorySharePercentages() {
+        List<DateSummaryDto> dates = getChronologicalDateSummaries(null);
+        if (dates == null || dates.isEmpty()) {
+            return List.of();
+        }
+
+        List<CategoryHistoricalShareDto> result = new java.util.ArrayList<>();
+        for (DateSummaryDto d : dates) {
+            BigDecimal totalNetWorth = d.totalAmount();
+            if (totalNetWorth == null || totalNetWorth.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+            List<CategoryShareDto> shares = getCategorySharesForDate(d.date());
+            for (CategoryShareDto share : shares) {
+                if (share.totalAmount() == null) continue;
+                double pct = share.totalAmount().doubleValue() / totalNetWorth.doubleValue() * 100.0;
+                result.add(new CategoryHistoricalShareDto(d.date(), share.categoryName(), Math.max(0.0, pct), share.totalAmount()));
+            }
+        }
+        return result;
     }
 
     public BigDecimal getCurrentWealth(String username) {
@@ -458,5 +481,117 @@ public class DataService {
 
         updateImportMetadata(filename);
         return new CsvImportResult(imported, skipped);
+    }
+
+    public record BudgetMonthlyCategorySumDto(String categoryName, java.time.YearMonth yearMonth, BigDecimal totalAmount) {}
+
+    public List<BudgetMonthlyCategorySumDto> getBudgetMonthlyCategorySums() {
+        var records = create.select(
+                    BUDGET_CAT_NAME,
+                    BTX_DATE,
+                    BTX_AMOUNT
+                )
+                .from(BUDGET_TRANSACTION)
+                .join(BUDGET_CATEGORY).on(BTX_CAT_ID.eq(BUDGET_CAT_ID))
+                .fetch();
+
+        Map<String, Map<java.time.YearMonth, BigDecimal>> aggregated = new java.util.HashMap<>();
+        for (var r : records) {
+            String cat = r.get(BUDGET_CAT_NAME);
+            LocalDate date = r.get(BTX_DATE);
+            BigDecimal amt = r.get(BTX_AMOUNT);
+            if (cat == null || date == null || amt == null) continue;
+
+            java.time.YearMonth ym = java.time.YearMonth.from(date);
+            aggregated.computeIfAbsent(cat, k -> new java.util.HashMap<>())
+                    .merge(ym, amt, BigDecimal::add);
+        }
+
+        List<BudgetMonthlyCategorySumDto> result = new java.util.ArrayList<>();
+        for (var catEntry : aggregated.entrySet()) {
+            String catName = catEntry.getKey();
+            for (var ymEntry : catEntry.getValue().entrySet()) {
+                result.add(new BudgetMonthlyCategorySumDto(catName, ymEntry.getKey(), ymEntry.getValue()));
+            }
+        }
+
+        result.sort(java.util.Comparator.comparing(BudgetMonthlyCategorySumDto::categoryName)
+                .thenComparing(BudgetMonthlyCategorySumDto::yearMonth));
+        return result;
+    }
+
+    public List<BudgetTransactionDto> getBudgetTransactionsForCategoryAndMonth(String categoryName, java.time.YearMonth yearMonth) {
+        if (categoryName == null || yearMonth == null) return List.of();
+        LocalDate startDate = yearMonth.atDay(1);
+        LocalDate endDate = yearMonth.atEndOfMonth();
+
+        return create.select(BTX_ID, BTX_DATE, BTX_TYPE, BTX_AMOUNT, BUDGET_CAT_NAME, USERNAME, BTX_DESC)
+                .from(BUDGET_TRANSACTION)
+                .join(BUDGET_CATEGORY).on(BTX_CAT_ID.eq(BUDGET_CAT_ID))
+                .join(APP_USER).on(BTX_USER_ID.eq(USER_ID))
+                .where(BUDGET_CAT_NAME.eq(categoryName))
+                .and(BTX_DATE.between(startDate, endDate))
+                .orderBy(BTX_DATE.desc(), BTX_ID.desc())
+                .fetch(org.jooq.Records.mapping(BudgetTransactionDto::new));
+    }
+
+    public record WealthGrowthDecompositionDto(
+            LocalDate startDate,
+            LocalDate endDate,
+            BigDecimal totalWealthStart,
+            BigDecimal totalWealthEnd,
+            BigDecimal totalDelta,
+            BigDecimal netBudgetSavings,
+            BigDecimal investmentAppreciation
+    ) {}
+
+    public List<WealthGrowthDecompositionDto> getWealthGrowthDecomposition(String username) {
+        List<DateSummaryDto> dates = getChronologicalDateSummaries(username);
+        if (dates.size() < 2) {
+            return List.of();
+        }
+
+        List<WealthGrowthDecompositionDto> result = new java.util.ArrayList<>();
+        for (int i = 0; i < dates.size() - 1; i++) {
+            LocalDate startDate = dates.get(i).date();
+            LocalDate endDate = dates.get(i + 1).date();
+
+            BigDecimal startWealth = dates.get(i).totalAmount();
+            BigDecimal endWealth = dates.get(i + 1).totalAmount();
+            BigDecimal totalDelta = endWealth.subtract(startWealth);
+
+            // Fetch net budget income (income - expense) between (startDate, endDate]
+            var btxRecords = create.select(BTX_TYPE, BTX_AMOUNT)
+                    .from(BUDGET_TRANSACTION)
+                    .where(BTX_DATE.gt(startDate))
+                    .and(BTX_DATE.lessOrEqual(endDate))
+                    .fetch();
+
+            BigDecimal netSavings = BigDecimal.ZERO;
+            for (var r : btxRecords) {
+                String type = r.get(BTX_TYPE);
+                BigDecimal amt = r.get(BTX_AMOUNT);
+                if (amt == null) continue;
+                if ("Einnahme".equalsIgnoreCase(type) || "Einnahmen".equalsIgnoreCase(type) || "Income".equalsIgnoreCase(type)) {
+                    netSavings = netSavings.add(amt);
+                } else {
+                    netSavings = netSavings.subtract(amt);
+                }
+            }
+
+            BigDecimal investmentAppreciation = totalDelta.subtract(netSavings);
+
+            result.add(new WealthGrowthDecompositionDto(
+                    startDate,
+                    endDate,
+                    startWealth,
+                    endWealth,
+                    totalDelta,
+                    netSavings,
+                    investmentAppreciation
+            ));
+        }
+
+        return result;
     }
 }
