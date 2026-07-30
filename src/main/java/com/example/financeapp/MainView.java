@@ -369,8 +369,19 @@ public class MainView extends VerticalLayout {
                 .set("width", "100%");
 
         H3 chartTitle = new H3("Vermögensverlauf über die Zeit");
-        chartTitle.getStyle().set("margin-top", "0").set("margin-bottom", "20px");
-        chartCard.add(chartTitle);
+        chartTitle.getStyle().set("margin-top", "0").set("margin-bottom", "4px");
+
+        Div chartSubTitle = new Div();
+        chartSubTitle.setId("wealth-trend-hover-info");
+        chartSubTitle.setText("Fahren Sie mit der Maus über einen Datenpunkt, um den genauen Vermögenswert anzuzeigen.");
+        chartSubTitle.getStyle()
+                .set("font-size", "0.95rem")
+                .set("line-height", "24px")
+                .set("height", "24px")
+                .set("color", "var(--lumo-secondary-text-color)")
+                .set("margin-bottom", "16px");
+
+        chartCard.add(chartTitle, chartSubTitle);
 
         BigDecimal maxAmount = summaries.stream()
                 .map(DataService.DateSummaryDto::totalAmount)
@@ -460,11 +471,20 @@ public class MainView extends VerticalLayout {
         svg.append(String.format("<path d=\"%s\" fill=\"none\" stroke=\"#6366f1\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />", pathD.toString()));
 
         // Points and X-axis date labels
-        DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("dd.MM.yy");
+        DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("dd.MM.yyyy");
         for (int i = 0; i < points.size(); i++) {
             ChartPoint p = points.get(i);
-            svg.append(String.format(java.util.Locale.US, "<circle cx=\"%.1f\" cy=\"%.1f\" r=\"5\" fill=\"#6366f1\" stroke=\"#ffffff\" stroke-width=\"2\">", p.x, p.y));
-            svg.append(String.format("<title>%s: %s</title>", p.date.format(dateFmt), formatAmount(p.amount)));
+            String formattedDate = p.date.format(dateFmt);
+            String formattedAmt = formatAmount(p.amount).replace("'", "\\'");
+
+            String mouseOver = String.format(
+                "document.getElementById(&quot;wealth-trend-hover-info&quot;).innerHTML=&quot;&lt;strong&gt;%s&lt;/strong&gt;: &lt;span style=\\&quot;color:#6366f1; font-weight:bold; font-size:0.95rem;\\&quot;&gt;%s&lt;/span&gt;&quot;; this.setAttribute(&quot;r&quot;, &quot;8&quot;);",
+                formattedDate, formattedAmt
+            );
+            String mouseOut = "document.getElementById(&quot;wealth-trend-hover-info&quot;).textContent=&quot;Fahren Sie mit der Maus über einen Datenpunkt, um den genauen Vermögenswert anzuzeigen.&quot;; this.setAttribute(&quot;r&quot;, &quot;5&quot;);";
+
+            svg.append(String.format(java.util.Locale.US, "<circle cx=\"%.1f\" cy=\"%.1f\" r=\"5\" fill=\"#6366f1\" stroke=\"#ffffff\" stroke-width=\"2\" style=\"cursor:pointer; transition: all 0.2s ease;\" onmouseover=\"%s\" onmouseout=\"%s\">", p.x, p.y, mouseOver, mouseOut));
+            svg.append(String.format("<title>%s: %s</title>", formattedDate, formatAmount(p.amount)));
             svg.append("</circle>");
 
             if (n <= 12 || i % Math.max(1, n / 6) == 0 || i == n - 1) {
@@ -860,16 +880,19 @@ public class MainView extends VerticalLayout {
             String mouseOut =
                 "document.getElementById(&quot;growth-chart-hover-info&quot;).textContent=&quot;Fahren Sie mit der Maus über einen Zeitraum, um Details zu Einnahmen und Wertsteigerung anzuzeigen.&quot;;";
 
+            String startStr = decomp.startDate().toString();
+            String endStr = decomp.endDate().toString();
+
             svg.append(String.format(java.util.Locale.US,
-                "<rect x=\"%.1f\" y=\"%.1f\" width=\"%.1f\" height=\"%.1f\" fill=\"%s\" rx=\"2\" style=\"cursor:pointer; transition: opacity 0.2s ease;\" onmouseover=\"%s\" onmouseout=\"%s\">",
-                groupX, savY, barWidth, Math.max(1.0, savHeight), savingsColor, mouseOver, mouseOut));
-            svg.append(String.format("<title>%s - Ersparnisse/Einnahmen: %s</title>", intervalLabel, formatAmount(decomp.netBudgetSavings())));
+                "<rect x=\"%.1f\" y=\"%.1f\" width=\"%.1f\" height=\"%.1f\" fill=\"%s\" rx=\"2\" class=\"growth-bar\" data-start=\"%s\" data-end=\"%s\" style=\"cursor:pointer; transition: opacity 0.2s ease;\" onmouseover=\"%s\" onmouseout=\"%s\">",
+                groupX, savY, barWidth, Math.max(1.0, savHeight), savingsColor, startStr, endStr, mouseOver, mouseOut));
+            svg.append(String.format("<title>%s - Ersparnisse/Einnahmen: %s (Klicken für Einzelbuchungen)</title>", intervalLabel, formatAmount(decomp.netBudgetSavings())));
             svg.append("</rect>");
 
             svg.append(String.format(java.util.Locale.US,
-                "<rect x=\"%.1f\" y=\"%.1f\" width=\"%.1f\" height=\"%.1f\" fill=\"%s\" rx=\"2\" style=\"cursor:pointer; transition: opacity 0.2s ease;\" onmouseover=\"%s\" onmouseout=\"%s\">",
-                groupX + barWidth, appY, barWidth, Math.max(1.0, appHeight), investColor, mouseOver, mouseOut));
-            svg.append(String.format("<title>%s - Wertsteigerung/Investitionen: %s</title>", intervalLabel, formatAmount(decomp.investmentAppreciation())));
+                "<rect x=\"%.1f\" y=\"%.1f\" width=\"%.1f\" height=\"%.1f\" fill=\"%s\" rx=\"2\" class=\"growth-bar\" data-start=\"%s\" data-end=\"%s\" style=\"cursor:pointer; transition: opacity 0.2s ease;\" onmouseover=\"%s\" onmouseout=\"%s\">",
+                groupX + barWidth, appY, barWidth, Math.max(1.0, appHeight), investColor, startStr, endStr, mouseOver, mouseOut));
+            svg.append(String.format("<title>%s - Wertsteigerung/Investitionen: %s (Klicken für Einzelbuchungen)</title>", intervalLabel, formatAmount(decomp.investmentAppreciation())));
             svg.append("</rect>");
 
             if (nIntervals <= 10 || i % Math.max(1, nIntervals / 5) == 0 || i == nIntervals - 1) {
@@ -883,6 +906,21 @@ public class MainView extends VerticalLayout {
 
         Div svgWrapper = new Div();
         svgWrapper.getElement().setProperty("innerHTML", svg.toString());
+
+        svgWrapper.getElement().addEventListener("click", e -> {
+            String sDate = e.getEventData().get("event.target.dataset.start").asString();
+            String eDate = e.getEventData().get("event.target.dataset.end").asString();
+            if (sDate != null && eDate != null && !sDate.isEmpty() && !eDate.isEmpty()) {
+                try {
+                    LocalDate start = LocalDate.parse(sDate);
+                    LocalDate end = LocalDate.parse(eDate);
+                    openGrowthIntervalDetailDialog(start, end);
+                } catch (Exception ex) {
+                    // ignore
+                }
+            }
+        }).addEventData("event.target.dataset.start").addEventData("event.target.dataset.end");
+
         chartCard.add(svgWrapper);
 
         Div legend = new Div();
@@ -912,6 +950,68 @@ public class MainView extends VerticalLayout {
         chartCard.add(legend);
 
         return chartCard;
+    }
+
+    private void openGrowthIntervalDetailDialog(LocalDate startDate, LocalDate endDate) {
+        Dialog dialog = new Dialog();
+        dialog.setWidth("900px");
+        dialog.setMaxWidth("95vw");
+
+        java.time.format.DateTimeFormatter dFmt = java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy");
+        String titleStr = "Einzelbuchungen im Zeitraum: " + startDate.format(dFmt) + " bis " + endDate.format(dFmt);
+        H3 header = new H3(titleStr);
+        header.getStyle().set("margin-top", "0").set("margin-bottom", "16px");
+
+        List<DataService.BudgetTransactionDto> transactions = service.getBudgetTransactionsForInterval(startDate, endDate);
+
+        Span infoSpan = new Span();
+        if (transactions.isEmpty()) {
+            infoSpan.setText("Keine CSV-Budget-Einzelbuchungen in diesem Zeitraum vorhanden.");
+        } else {
+            infoSpan.setText("CSV-Budget-Einzelbuchungen (" + transactions.size() + " Einträge):");
+        }
+        infoSpan.getStyle().set("font-weight", "bold").set("font-size", "1.05rem").set("margin-bottom", "16px");
+
+        Grid<DataService.BudgetTransactionDto> detailGrid = new Grid<>();
+        detailGrid.setHeight("380px");
+        detailGrid.setWidthFull();
+        detailGrid.addColumn(dto -> dto.date() != null ? dto.date().format(dFmt) : "")
+                .setHeader("Datum")
+                .setAutoWidth(true)
+                .setFlexGrow(0)
+                .setSortable(true);
+        detailGrid.addColumn(DataService.BudgetTransactionDto::type)
+                .setHeader("Typ")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
+        detailGrid.addColumn(dto -> formatAmount(dto.amount()))
+                .setHeader("Betrag")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
+        detailGrid.addColumn(DataService.BudgetTransactionDto::category)
+                .setHeader("Kategorie")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
+        detailGrid.addColumn(DataService.BudgetTransactionDto::person)
+                .setHeader("Person")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
+        detailGrid.addColumn(dto -> dto.description() != null ? dto.description() : "")
+                .setHeader("Beschreibung")
+                .setAutoWidth(true)
+                .setFlexGrow(1);
+        detailGrid.setItems(transactions);
+
+        Button closeBtn = new Button("Schließen", e -> dialog.close());
+        closeBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        closeBtn.getStyle().set("margin-top", "16px");
+
+        VerticalLayout dlgLayout = new VerticalLayout(header, infoSpan, detailGrid, closeBtn);
+        dlgLayout.setPadding(false);
+        dlgLayout.setSpacing(true);
+
+        dialog.add(dlgLayout);
+        dialog.open();
     }
 
     private String formatCompactAmount(BigDecimal amount) {

@@ -83,6 +83,9 @@ class UC004ViewJointDashboardTest extends SpringBrowserlessTest {
             assertThat(pieCard).isNotNull();
             assertThat($(H3.class, pieCard).withTextContaining("Kategorien-Verteilung").exists()).isTrue();
 
+            // Verify wealth growth decomposition chart exists (BR-018)
+            assertThat($(H3.class).withText("Vermögenszuwachs-Aufschlüsselung: Einnahmen/Ersparnisse vs. Wertsteigerung/Investitionen").exists()).isTrue();
+
             // No A1 warning is shown
             assertThat($(Div.class).withId("no-data-message").exists()).isFalse();
         }

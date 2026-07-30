@@ -594,4 +594,16 @@ public class DataService {
 
         return result;
     }
+
+    public List<BudgetTransactionDto> getBudgetTransactionsForInterval(LocalDate startDate, LocalDate endDate) {
+        if (startDate == null || endDate == null) return List.of();
+        return create.select(BTX_ID, BTX_DATE, BTX_TYPE, BTX_AMOUNT, BUDGET_CAT_NAME, USERNAME, BTX_DESC)
+                .from(BUDGET_TRANSACTION)
+                .join(BUDGET_CATEGORY).on(BTX_CAT_ID.eq(BUDGET_CAT_ID))
+                .join(APP_USER).on(BTX_USER_ID.eq(USER_ID))
+                .where(BTX_DATE.gt(startDate))
+                .and(BTX_DATE.lessOrEqual(endDate))
+                .orderBy(BTX_DATE.desc(), BTX_ID.desc())
+                .fetch(org.jooq.Records.mapping(BudgetTransactionDto::new));
+    }
 }

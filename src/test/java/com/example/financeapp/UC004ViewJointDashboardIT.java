@@ -75,10 +75,21 @@ class UC004ViewJointDashboardIT extends AbstractBasePlaywrightIT {
             com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat(trendChart).isVisible();
             com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat(trendChart).containsText("Vermögensverlauf über die Zeit");
 
+            // Verify hovering over trend chart point displays exact value (BR-005)
+            com.microsoft.playwright.Locator point = page.locator("#wealth-trend-chart circle").first();
+            point.dispatchEvent("mouseover");
+            page.waitForTimeout(200);
+            com.microsoft.playwright.Locator trendHoverInfo = page.locator("#wealth-trend-hover-info");
+            com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat(trendHoverInfo).containsText("4.001,25 €");
+
             // Verify category distribution pie chart (BR-006)
             com.microsoft.playwright.Locator pieChart = page.locator("#category-pie-chart-card");
             com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat(pieChart).isVisible();
             com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat(pieChart).containsText("Kategorien-Verteilung");
+
+            // Verify wealth growth decomposition chart (BR-018)
+            com.microsoft.playwright.Locator growthTitle = page.locator("h3:has-text(\"Vermögenszuwachs-Aufschlüsselung\")");
+            com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat(growthTitle).isVisible();
 
             // No warning is present
             assertThat(page.locator("#no-data-message").count()).isEqualTo(0);
